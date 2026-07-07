@@ -1,4 +1,4 @@
-import { signToken, verifyToken } from "./lib/tokens";
+import { signToken, verifyToken, timingSafeEqual } from "./lib/tokens";
 import type { EmailProvider } from "./lib/email";
 import { json, errorResponse } from "./lib/http";
 
@@ -9,10 +9,32 @@ async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function pbkdf2Hex(input: string, saltB64: string, iterations = 210_000): Promise<string> {
+  const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
+  const material = await crypto.subtle.importKey("raw", enc.encode(input), "PBKDF2", false, [
+    "deriveBits",
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    material,
+    256,
+  );
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomSaltB64(): string {
+  const s = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...s));
+}
+
 function randomCode(): string {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  return [...bytes].map((b) => alphabet[b % alphabet.length]).join("");
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // 31 chars
+  const out: string[] = [];
+  while (out.length < 8) {
+    const [byte] = crypto.getRandomValues(new Uint8Array(1));
+    if (byte < 248) out.push(alphabet[byte % alphabet.length]);
+  }
+  return out.join("");
 }
 
 export async function handleRecovery(
@@ -29,9 +51,11 @@ export async function handleRecovery(
       return errorResponse("bad_input", "Valid email required", 400);
     }
     const code = makeCode();
+    const codeSalt = randomSaltB64();
+    const codeHash = await pbkdf2Hex(code, codeSalt);
     const token = await signToken(
       deps.secret,
-      { emailHash: await sha256Hex(email), codeHash: await sha256Hex(code) },
+      { emailHash: await sha256Hex(email), codeSalt, codeHash },
       15 * 60,
       deps.nowMs,
     );
@@ -47,7 +71,15 @@ export async function handleRecovery(
       return errorResponse("bad_input", "token and code required", 400);
     }
     const payload = await verifyToken(deps.secret, token, deps.nowMs);
-    if (!payload || payload.codeHash !== (await sha256Hex(code))) {
+    if (
+      !payload ||
+      typeof payload.codeSalt !== "string" ||
+      typeof payload.codeHash !== "string"
+    ) {
+      return errorResponse("invalid_code", "Code is invalid or expired", 401);
+    }
+    const submittedHash = await pbkdf2Hex(code, payload.codeSalt);
+    if (!timingSafeEqual(submittedHash, payload.codeHash)) {
       return errorResponse("invalid_code", "Code is invalid or expired", 401);
     }
     const resetToken = await signToken(

@@ -56,7 +56,12 @@ test("signOut clears the account", async () => {
 
 test("resetPin changes the stored PIN so the new PIN verifies and the old one does not", async () => {
   await createAccount(input, createMemoryWrappingKeyStore());
-  await resetPin("9999");
+  await resetPin("9999", "reset-token");
   await expect(verifyAccountPin("9999")).resolves.toBe(true);
   await expect(verifyAccountPin("1234")).resolves.toBe(false);
+});
+
+test("resetPin refuses without a reset token", async () => {
+  await createAccount(input, createMemoryWrappingKeyStore());
+  await expect(resetPin("9999", "")).rejects.toThrow();
 });

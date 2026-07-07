@@ -58,7 +58,8 @@ export async function revealApiKey(store: WrappingKeyStore): Promise<string> {
   return unwrapApiKey(store, getWrappedKey());
 }
 
-export async function resetPin(newPin: string): Promise<void> {
+export async function resetPin(newPin: string, resetToken: string): Promise<void> {
+  if (!resetToken) throw new Error("A valid reset token is required");
   const account = getAccount();
   if (!account) throw new Error("No account to reset");
   const { hash, salt } = await hashPin(newPin);

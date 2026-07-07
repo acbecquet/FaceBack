@@ -1,8 +1,5 @@
 import { generateBackOfHead, GenerationRequestError } from "./generationClient";
 
-// GenerationRequestError is used in the error test below
-GenerationRequestError;
-
 function fetchReturning(body: unknown, status = 200): typeof fetch {
   return (async () =>
     new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -31,7 +28,10 @@ test("posts the image and key and returns the result image", async () => {
 
 test("throws GenerationRequestError carrying the server error code", async () => {
   const spy = fetchReturning({ error: { code: "generation_failed", message: "x" } }, 502);
-  await expect(
-    generateBackOfHead({ image: { base64: "IN", mimeType: "image/png" }, apiKey: "sk" }, spy),
-  ).rejects.toMatchObject({ name: "GenerationRequestError", code: "generation_failed" });
+  const err = await generateBackOfHead(
+    { image: { base64: "IN", mimeType: "image/png" }, apiKey: "sk" },
+    spy,
+  ).catch((e) => e);
+  expect(err).toBeInstanceOf(GenerationRequestError);
+  expect(err.code).toBe("generation_failed");
 });

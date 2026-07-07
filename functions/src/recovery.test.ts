@@ -14,6 +14,7 @@ test("request emails a fixed code and returns a token; verify with that code ret
   const reqRes = await handleRecovery(post("/recovery/request", { email: "u@e.com" }), deps);
   expect(reqRes.status).toBe(200);
   const { token } = await reqRes.json();
+  expect(token).not.toContain("CODE1234"); // token carries only hashes, never the plaintext code
   expect(email.sent).toHaveLength(1);
   expect(email.sent[0].to).toBe("u@e.com");
   expect(email.sent[0].body).toContain("CODE1234");
