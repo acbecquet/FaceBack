@@ -1,4 +1,5 @@
 import { config } from "./config";
+import type { WrappedKeyRecord } from "../types";
 
 const enc = new TextEncoder();
 
@@ -47,4 +48,58 @@ export async function verifyPin(
 ): Promise<boolean> {
   const { hash } = await hashPin(pin, saltB64);
   return timingSafeEqual(hash, hashB64);
+}
+
+export interface WrappingKeyStore {
+  get(): Promise<CryptoKey | null>;
+  set(key: CryptoKey): Promise<void>;
+}
+
+export function createMemoryWrappingKeyStore(): WrappingKeyStore {
+  let held: CryptoKey | null = null;
+  return {
+    async get() {
+      return held;
+    },
+    async set(key) {
+      held = key;
+    },
+  };
+}
+
+async function getOrCreateWrappingKey(store: WrappingKeyStore): Promise<CryptoKey> {
+  const existing = await store.get();
+  if (existing) return existing;
+  const key = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    false, // non-extractable: raw bytes can never be read back out
+    ["encrypt", "decrypt"],
+  );
+  await store.set(key);
+  return key;
+}
+
+export async function wrapApiKey(
+  store: WrappingKeyStore,
+  apiKey: string,
+): Promise<WrappedKeyRecord> {
+  const key = await getOrCreateWrappingKey(store);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(apiKey));
+  return { ciphertext: bytesToB64(new Uint8Array(ct)), iv: bytesToB64(iv) };
+}
+
+export async function unwrapApiKey(
+  store: WrappingKeyStore,
+  rec: WrappedKeyRecord,
+): Promise<string> {
+  const key = await getOrCreateWrappingKey(store);
+  const iv = new Uint8Array(b64ToBytes(rec.iv));
+  const ct = new Uint8Array(b64ToBytes(rec.ciphertext));
+  const pt = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ct,
+  );
+  return new TextDecoder().decode(pt);
 }
