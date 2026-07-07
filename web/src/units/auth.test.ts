@@ -6,6 +6,7 @@ import {
   signOut,
   verifyAccountPin,
   revealApiKey,
+  resetPin,
 } from "./auth";
 import { createMemoryWrappingKeyStore } from "./keystore";
 
@@ -51,4 +52,11 @@ test("signOut clears the account", async () => {
   signOut();
   expect(getAccount()).toBeNull();
   expect(isSignedIn()).toBe(false);
+});
+
+test("resetPin changes the stored PIN so the new PIN verifies and the old one does not", async () => {
+  await createAccount(input, createMemoryWrappingKeyStore());
+  await resetPin("9999");
+  await expect(verifyAccountPin("9999")).resolves.toBe(true);
+  await expect(verifyAccountPin("1234")).resolves.toBe(false);
 });

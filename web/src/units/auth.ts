@@ -57,3 +57,11 @@ function getWrappedKey(): WrappedKeyRecord {
 export async function revealApiKey(store: WrappingKeyStore): Promise<string> {
   return unwrapApiKey(store, getWrappedKey());
 }
+
+export async function resetPin(newPin: string): Promise<void> {
+  const account = getAccount();
+  if (!account) throw new Error("No account to reset");
+  const { hash, salt } = await hashPin(newPin);
+  const updated: Account = { ...account, pinHash: hash, pinSalt: salt };
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(updated));
+}
