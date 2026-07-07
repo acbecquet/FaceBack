@@ -20,10 +20,13 @@ function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<
   return openDb().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const store = db.transaction(STORE, mode).objectStore(STORE);
+        const t = db.transaction(STORE, mode);
+        const store = t.objectStore(STORE);
         const req = run(store);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
+        t.oncomplete = () => db.close();
+        t.onabort = () => db.close();
       }),
   );
 }

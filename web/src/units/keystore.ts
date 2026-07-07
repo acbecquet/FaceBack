@@ -79,6 +79,19 @@ async function getOrCreateWrappingKey(store: WrappingKeyStore): Promise<CryptoKe
   return key;
 }
 
+export class WrappingKeyMissingError extends Error {
+  constructor() {
+    super("Wrapping key not found");
+    this.name = "WrappingKeyMissingError";
+  }
+}
+
+async function getWrappingKey(store: WrappingKeyStore): Promise<CryptoKey> {
+  const key = await store.get();
+  if (!key) throw new WrappingKeyMissingError();
+  return key;
+}
+
 export async function wrapApiKey(
   store: WrappingKeyStore,
   apiKey: string,
@@ -93,7 +106,7 @@ export async function unwrapApiKey(
   store: WrappingKeyStore,
   rec: WrappedKeyRecord,
 ): Promise<string> {
-  const key = await getOrCreateWrappingKey(store);
+  const key = await getWrappingKey(store);
   const iv = new Uint8Array(b64ToBytes(rec.iv));
   const ct = new Uint8Array(b64ToBytes(rec.ciphertext));
   const pt = await crypto.subtle.decrypt(

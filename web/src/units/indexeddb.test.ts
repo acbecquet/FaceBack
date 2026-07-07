@@ -1,5 +1,16 @@
+import { afterEach } from "vitest";
 import { createIndexedDbWrappingKeyStore } from "./indexeddb";
 import { wrapApiKey, unwrapApiKey } from "./keystore";
+
+afterEach(
+  () =>
+    new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase("faceback");
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    }),
+);
 
 test("the IndexedDB store persists the wrapping key across store instances", async () => {
   const storeA = createIndexedDbWrappingKeyStore();
