@@ -49,3 +49,11 @@ test("rejects a request missing the image or key with 400", async () => {
   expect(res.status).toBe(400);
   expect((await res.json()).error.code).toBe("bad_input");
 });
+
+test("rejects malformed (non-string) image fields with 400 and makes no upstream call", async () => {
+  const c = clientReturning(bigImage);
+  const res = await handleGenerate(req({ image: { base64: 123, mimeType: true }, key: "k" }), c);
+  expect(res.status).toBe(400);
+  expect((await res.json()).error.code).toBe("bad_input");
+  expect(c.calls()).toBe(0);
+});

@@ -23,7 +23,14 @@ export async function handleGenerate(
   }
   const image = body?.image;
   const key = body?.key;
-  if (!image?.base64 || !image?.mimeType || typeof key !== "string" || !key) {
+  if (
+    typeof image?.base64 !== "string" ||
+    !image.base64 ||
+    typeof image?.mimeType !== "string" ||
+    !image.mimeType ||
+    typeof key !== "string" ||
+    !key
+  ) {
     return errorResponse("bad_input", "Expected { image: { base64, mimeType }, key }", 400);
   }
 
