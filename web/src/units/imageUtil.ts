@@ -24,6 +24,13 @@ export function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+export function base64ToBlob(base64: string, mimeType: string): Blob {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
+
 // Browser-only: draws the image to a canvas at the downscaled size and returns
 // JPEG base64. jsdom cannot execute canvas rendering, so this path is verified
 // in the Plan 4 browser run; the size math above is unit-tested.
