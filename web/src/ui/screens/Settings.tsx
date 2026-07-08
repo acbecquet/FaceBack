@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getAccount, verifyAccountPin, revealApiKey, signOut } from "../../units/auth";
+import { getAccount, verifyAccountPin, revealApiKey, updateApiKey, signOut } from "../../units/auth";
 import { createIndexedDbWrappingKeyStore } from "../../units/indexeddb";
 import { BackIcon, KeyIcon, PersonIcon, SignOutIcon, LockIcon } from "../icons";
 import { PinInput } from "../components/PinInput";
@@ -11,6 +11,8 @@ export function Settings({ onBack, onSignedOut }: { onBack: () => void; onSigned
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [revealed, setRevealed] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [saved, setSaved] = useState(false);
 
   async function unlock() {
     setError("");
@@ -18,7 +20,9 @@ export function Settings({ onBack, onSignedOut }: { onBack: () => void; onSigned
       setError("Incorrect PIN");
       return;
     }
-    setRevealed(await revealApiKey(createIndexedDbWrappingKeyStore()));
+    const key = await revealApiKey(createIndexedDbWrappingKeyStore());
+    setRevealed(key);
+    setEditValue(key);
     setPinOpen(false);
     setPin("");
   }
@@ -42,7 +46,16 @@ export function Settings({ onBack, onSignedOut }: { onBack: () => void; onSigned
         <Row icon={<KeyIcon />} label="Edit API key" trailing={<LockIcon />} onClick={() => { setPinOpen(true); setRevealed(null); }} />
         {revealed !== null ? (
           <div style={{ padding: 16 }}>
-            <input aria-label="API key" defaultValue={revealed} style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--fb-line)" }} />
+            <input
+              aria-label="API key"
+              value={editValue}
+              onChange={(e) => { setEditValue(e.target.value); setSaved(false); }}
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--fb-line)" }}
+            />
+            <button className="fb-btn" style={{ marginTop: 8 }} onClick={async () => { await updateApiKey(editValue, createIndexedDbWrappingKeyStore()); setSaved(true); }}>
+              Save key
+            </button>
+            {saved ? <div style={{ color: "#1a7f37", fontSize: 12, marginTop: 6 }}>Saved.</div> : null}
           </div>
         ) : null}
         <Row icon={<SignOutIcon />} label="Sign out" onClick={doSignOut} />

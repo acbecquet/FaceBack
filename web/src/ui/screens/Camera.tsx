@@ -13,8 +13,12 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
     let cancelled = false;
     startStream(facing)
       .then((s) => {
+        if (cancelled) {
+          stopStream(s);
+          return;
+        }
         stream = s;
-        if (!cancelled && videoRef.current) {
+        if (videoRef.current) {
           videoRef.current.srcObject = s;
           void videoRef.current.play();
         }
@@ -37,7 +41,7 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
   }
 
   return (
-    <div className="fb-screen">
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--fb-bg)" }}>
       <div className="fb-topbar">
         <Wordmark size={17} />
         <span role="button" aria-label="Settings" onClick={onOpenSettings} style={{ cursor: "pointer", color: "var(--fb-muted)", display: "flex" }}>

@@ -1,4 +1,4 @@
-import { decide } from "../units/usageGuard";
+import { decide, record } from "../units/usageGuard";
 import { hasDetectableFace, looksLikeBackOfHead, type FaceGateResult } from "../units/faceGate";
 
 export type Screen = "signin" | "camera" | "generating" | "result" | "collection" | "settings";
@@ -46,6 +46,6 @@ export async function runGeneration(
     result = await deps.generate({ image, apiKey: input.apiKey });
   }
 
-  deps.saveUsage([...deps.history.filter((t) => deps.now - t < 24 * 60 * 60 * 1000), deps.now]);
+  deps.saveUsage(record(deps.now, deps.history));
   return result;
 }

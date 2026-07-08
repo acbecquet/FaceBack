@@ -7,6 +7,7 @@ export function Collection({ onBack }: { onBack: () => void }) {
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [urls, setUrls] = useState<Record<string, string>>({});
 
   async function reload() {
     setItems(await listItems());
@@ -14,6 +15,15 @@ export function Collection({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     void reload();
   }, []);
+
+  useEffect(() => {
+    const map: Record<string, string> = {};
+    for (const it of items) map[it.id] = URL.createObjectURL(it.imageBlob);
+    setUrls(map);
+    return () => {
+      for (const u of Object.values(map)) URL.revokeObjectURL(u);
+    };
+  }, [items]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -53,7 +63,7 @@ export function Collection({ onBack }: { onBack: () => void }) {
                 onClick={() => selecting && toggle(it.id)}
                 style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", outline: selected.has(it.id) ? "3px solid var(--fb-blue)" : "none", cursor: selecting ? "pointer" : "default" }}
               >
-                <img src={URL.createObjectURL(it.imageBlob)} alt="back of head" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={urls[it.id]} alt="back of head" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 {selecting && selected.has(it.id) ? (
                   <span style={{ position: "absolute", top: 4, right: 4, background: "var(--fb-blue)", color: "#fff", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <CheckIcon />
