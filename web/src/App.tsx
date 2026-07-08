@@ -48,7 +48,12 @@ export default function App() {
   const [error, setError] = useState("");
 
   if (!account) {
-    return <SignIn onCreated={() => setAccount(getAccount())} />;
+    // NOTE(task-3): SignIn now speaks the hosted passwordless PublicAccount
+    // model, which does not match this screen's local-device Account type.
+    // Task 4 rewires App.tsx to consume PublicAccount end-to-end; for now we
+    // only keep this call site compiling by falling back to the existing
+    // local getAccount() re-read.
+    return <SignIn onSignedIn={() => setAccount(getAccount())} />;
   }
 
   async function handleCapture(blob: Blob) {

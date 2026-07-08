@@ -4,9 +4,9 @@ import App from "./App";
 
 beforeEach(() => localStorage.clear());
 
-test("first run shows the SignIn create-account screen", async () => {
+test("first run shows the SignIn screen", async () => {
   render(<App />);
-  await waitFor(() => expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole("button", { name: /send code/i })).toBeInTheDocument());
 });
 
 test("test environment exposes crypto.subtle and indexedDB", () => {
