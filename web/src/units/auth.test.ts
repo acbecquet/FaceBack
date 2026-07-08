@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
 import {
   createAccount,
   getAccount,
@@ -7,10 +7,21 @@ import {
   verifyAccountPin,
   revealApiKey,
   resetPin,
+  hasStoredKey,
 } from "./auth";
 import { createMemoryWrappingKeyStore } from "./keystore";
 
 beforeEach(() => localStorage.clear());
+
+afterEach(
+  () =>
+    new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase("faceback");
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    }),
+);
 
 const input = {
   username: "charlie",
@@ -35,6 +46,12 @@ test("the raw PIN and API key are never stored in plaintext", async () => {
   expect(dump).not.toContain("AIzaSy-fake-key");
 });
 
+test("createAccount stores the wrapped key in IndexedDB and hasStoredKey is true", async () => {
+  await createAccount(input, createMemoryWrappingKeyStore());
+  expect(localStorage.getItem("faceback.wrappedKey")).toBeNull(); // no longer in localStorage
+  await expect(hasStoredKey()).resolves.toBe(true);
+});
+
 test("verifyAccountPin accepts the right PIN and rejects the wrong one", async () => {
   await createAccount(input, createMemoryWrappingKeyStore());
   await expect(verifyAccountPin("1234")).resolves.toBe(true);
@@ -49,9 +66,16 @@ test("revealApiKey returns the decrypted key using the same store", async () => 
 
 test("signOut clears the account", async () => {
   await createAccount(input, createMemoryWrappingKeyStore());
-  signOut();
+  await signOut();
   expect(getAccount()).toBeNull();
   expect(isSignedIn()).toBe(false);
+});
+
+test("signOut clears the account and the stored key", async () => {
+  await createAccount(input, createMemoryWrappingKeyStore());
+  await signOut();
+  expect(getAccount()).toBeNull();
+  await expect(hasStoredKey()).resolves.toBe(false);
 });
 
 test("resetPin changes the stored PIN so the new PIN verifies and the old one does not", async () => {

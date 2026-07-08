@@ -1,4 +1,4 @@
-import type { Account, WrappedKeyRecord } from "../types";
+import type { Account } from "../types";
 import {
   hashPin,
   verifyPin,
@@ -6,9 +6,9 @@ import {
   unwrapApiKey,
   type WrappingKeyStore,
 } from "./keystore";
+import { getWrappedRecord, setWrappedRecord, clearKeystore } from "./indexeddb";
 
 const ACCOUNT_KEY = "faceback.account";
-const WRAPPED_KEY = "faceback.wrappedKey";
 
 export async function createAccount(
   input: { username: string; email: string; apiKey: string; pin: string },
@@ -16,6 +16,7 @@ export async function createAccount(
 ): Promise<Account> {
   const { hash, salt } = await hashPin(input.pin);
   const wrapped = await wrapApiKey(store, input.apiKey);
+  await setWrappedRecord(wrapped); // persist the key first
   const account: Account = {
     username: input.username,
     email: input.email,
@@ -24,7 +25,6 @@ export async function createAccount(
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
-  localStorage.setItem(WRAPPED_KEY, JSON.stringify(wrapped));
   return account;
 }
 
@@ -37,9 +37,13 @@ export function isSignedIn(): boolean {
   return getAccount() !== null;
 }
 
-export function signOut(): void {
+export async function hasStoredKey(): Promise<boolean> {
+  return (await getWrappedRecord()) !== null;
+}
+
+export async function signOut(): Promise<void> {
   localStorage.removeItem(ACCOUNT_KEY);
-  localStorage.removeItem(WRAPPED_KEY);
+  await clearKeystore();
 }
 
 export async function verifyAccountPin(pin: string): Promise<boolean> {
@@ -48,14 +52,10 @@ export async function verifyAccountPin(pin: string): Promise<boolean> {
   return verifyPin(pin, account.pinHash, account.pinSalt);
 }
 
-function getWrappedKey(): WrappedKeyRecord {
-  const raw = localStorage.getItem(WRAPPED_KEY);
-  if (!raw) throw new Error("No wrapped key stored");
-  return JSON.parse(raw) as WrappedKeyRecord;
-}
-
 export async function revealApiKey(store: WrappingKeyStore): Promise<string> {
-  return unwrapApiKey(store, getWrappedKey());
+  const rec = await getWrappedRecord();
+  if (!rec) throw new Error("No stored key");
+  return unwrapApiKey(store, rec);
 }
 
 export async function resetPin(newPin: string, resetToken: string): Promise<void> {

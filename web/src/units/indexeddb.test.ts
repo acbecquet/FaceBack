@@ -1,5 +1,10 @@
 import { afterEach } from "vitest";
-import { createIndexedDbWrappingKeyStore } from "./indexeddb";
+import {
+  createIndexedDbWrappingKeyStore,
+  getWrappedRecord,
+  setWrappedRecord,
+  clearKeystore,
+} from "./indexeddb";
 import { wrapApiKey, unwrapApiKey } from "./keystore";
 
 afterEach(
@@ -19,4 +24,11 @@ test("the IndexedDB store persists the wrapping key across store instances", asy
   // A fresh store instance reads the same persisted CryptoKey from IndexedDB.
   const storeB = createIndexedDbWrappingKeyStore();
   await expect(unwrapApiKey(storeB, rec)).resolves.toBe("persisted-secret");
+});
+
+test("the wrapped-key record round-trips through IndexedDB and clearKeystore removes it", async () => {
+  await setWrappedRecord({ ciphertext: "ct", iv: "iv" });
+  expect(await getWrappedRecord()).toEqual({ ciphertext: "ct", iv: "iv" });
+  await clearKeystore();
+  expect(await getWrappedRecord()).toBeNull();
 });

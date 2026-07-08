@@ -1,8 +1,10 @@
 import type { WrappingKeyStore } from "./keystore";
+import type { WrappedKeyRecord } from "../types";
 
 const DB_NAME = "faceback";
 const STORE = "keys";
 const KEY_ID = "wrappingKey";
+const WRAPPED_ID = "wrappedKey";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -41,4 +43,17 @@ export function createIndexedDbWrappingKeyStore(): WrappingKeyStore {
       await tx("readwrite", (s) => s.put(key, KEY_ID));
     },
   };
+}
+
+export async function getWrappedRecord(): Promise<WrappedKeyRecord | null> {
+  const v = await tx<WrappedKeyRecord | undefined>("readonly", (s) => s.get(WRAPPED_ID));
+  return v ?? null;
+}
+
+export async function setWrappedRecord(rec: WrappedKeyRecord): Promise<void> {
+  await tx("readwrite", (s) => s.put(rec, WRAPPED_ID));
+}
+
+export async function clearKeystore(): Promise<void> {
+  await tx("readwrite", (s) => s.clear());
 }
