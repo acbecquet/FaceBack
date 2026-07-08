@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { handleGenerate } from "./generate";
 import { createAccount, setAccountKey, DEV_ACCOUNT_ID } from "../data/accounts";
 import { addToAllowlist } from "../data/allowlist";
-import { getUsage } from "../data/usage";
+import { getUsage, FRIEND_CAP, incrementUsage } from "../data/usage";
 import { signSession } from "../auth/session";
 import { encryptApiKey } from "../crypto/keyCipher";
 import { GeminiError, type GeminiClient } from "../gemini";
@@ -83,4 +83,42 @@ test("anonymous request is 401; a Gemini 429 maps to 429", async () => {
   };
 
   expect((await handleGenerate(req(token), env, throw429)).status).toBe(429);
+});
+
+test("a friend over the daily cap gets 429 daily_limit and the model is never called", async () => {
+  await giveKey(DEV_ACCOUNT_ID, "dev-key"); // ensure the shared key is configured
+  const friend = await createAccount(env, { username: "capfriend", email: "capfriend@example.com" });
+  await addToAllowlist(env, "capfriend@example.com");
+  const now = Date.now();
+  for (let i = 0; i < FRIEND_CAP; i++) {
+    await incrementUsage(env, "capfriend@example.com", now);
+  }
+  const token = await signSession(friend.id, env.SESSION_SECRET, Date.now());
+  let called = false;
+  const spy = { makeClient: (_apiKey: string) => { called = true; return okClient(); } };
+
+  const res = await handleGenerate(req(token), env, spy);
+
+  expect(res.status).toBe(429);
+  const body = (await res.json()) as { error: { code: string } };
+  expect(body.error.code).toBe("daily_limit");
+  expect(called).toBe(false);
+});
+
+test("an own-key user's generate never touches the shared usage counters", async () => {
+  const owner = await createAccount(env, { username: "ownkeyuser", email: "ownkeyuser@example.com" });
+  await giveKey(owner.id, "own-key-xyz");
+  const token = await signSession(owner.id, env.SESSION_SECRET, Date.now());
+  const now = Date.now();
+  // The global bucket is a single shared, day-scoped counter (see shared/data/usage.ts),
+  // so other tests in this file may have already bumped it; compare against its value
+  // just before this call rather than assuming it starts at 0.
+  const globalBefore = (await getUsage(env, "ownkeyuser@example.com", now)).global;
+
+  const res = await handleGenerate(req(token), env, makeOk());
+
+  expect(res.status).toBe(200);
+  const usage = await getUsage(env, "ownkeyuser@example.com", now);
+  expect(usage.friend).toBe(0);
+  expect(usage.global).toBe(globalBefore);
 });
