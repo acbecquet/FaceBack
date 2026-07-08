@@ -37,6 +37,8 @@ function messageFor(e: unknown): string {
   }
   if (e instanceof GenerationRequestError) {
     if (e.code === "daily_limit") return "Daily limit reached. Try again tomorrow.";
+    if (e.code === "no_key" || e.code === "dev_key_unset")
+      return "No Gemini API key set yet - add one in Settings (tap the gear icon).";
     return e.message;
   }
   return "Something went wrong. Try again.";
@@ -80,18 +82,17 @@ export default function App() {
         // keep the result visible even if the collection write fails
       }
     } catch (e) {
+      setScreen("camera");
       if (e instanceof GenerationRequestError && e.code === "unauthorized") {
         setAccount(null);
-        setScreen("camera");
         return;
       }
-      if (e instanceof GenerationRequestError && e.code === "no_key") {
+      if (e instanceof GenerationRequestError && (e.code === "no_key" || e.code === "dev_key_unset")) {
+        // A normal user who lost key access is routed to AddKey by refreshMe;
+        // the owner stays on camera and sees the actionable message below.
         await refreshMe();
-        setScreen("camera");
-        return;
       }
       setError(messageFor(e));
-      setScreen("camera");
     }
   }
 

@@ -3,9 +3,17 @@ import { startStream, stopStream, captureFrame, otherFacing, type Facing } from 
 import { Wordmark } from "../components/Wordmark";
 import { GearIcon, PhotoIcon, SwitchCameraIcon } from "../icons";
 
+// Remember the chosen camera across remounts (e.g. after a generation) so
+// returning to the camera does not snap back to the back camera.
+let sessionFacing: Facing = "environment";
+
 export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob) => void; onOpenSettings: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [facing, setFacing] = useState<Facing>("environment");
+  const [facing, setFacingState] = useState<Facing>(sessionFacing);
+  const setFacing = (f: Facing) => {
+    sessionFacing = f;
+    setFacingState(f);
+  };
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -59,7 +67,7 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
             <input type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
           </label>
           <button aria-label="Shutter" onClick={shoot} style={{ width: 64, height: 64, borderRadius: "50%", background: "#fff", border: "4px solid rgba(255,255,255,.5)" }} />
-          <button aria-label="Switch camera" onClick={() => setFacing((f) => otherFacing(f))} style={{ color: "#fff", background: "none", border: "none", cursor: "pointer", display: "flex" }}>
+          <button aria-label="Switch camera" onClick={() => setFacing(otherFacing(facing))} style={{ color: "#fff", background: "none", border: "none", cursor: "pointer", display: "flex" }}>
             <SwitchCameraIcon />
           </button>
         </div>
