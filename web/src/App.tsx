@@ -32,7 +32,6 @@ function makeDeps() {
 function messageFor(e: unknown): string {
   if (e instanceof FlowError) {
     if (e.code === "too_soon") return "Please wait a moment before generating again.";
-    if (e.code === "daily_cap") return "You have reached today's generation limit.";
     if (e.code === "no_face") return "No face detected - try another photo.";
     return "Could not generate. Try again.";
   }

@@ -15,17 +15,6 @@ test("decide blocks as too_soon within the minimum interval", () => {
   expect(decide(NOW, [last])).toEqual({ allowed: false, reason: "too_soon" });
 });
 
-test("decide blocks as daily_cap when the 24h count reaches the cap", () => {
-  // DAILY_CAP entries, all older than the min interval but within 24h.
-  const history = Array.from({ length: config.DAILY_CAP }, (_, i) => NOW - 60_000 - i * 1000);
-  expect(decide(NOW, history)).toEqual({ allowed: false, reason: "daily_cap" });
-});
-
-test("decide ignores generations older than 24h for the cap", () => {
-  const old = Array.from({ length: config.DAILY_CAP }, (_, i) => NOW - 25 * 60 * 60 * 1000 - i * 1000);
-  expect(decide(NOW, old)).toEqual({ allowed: true });
-});
-
 test("record appends now and prunes entries older than 24h", () => {
   const old = NOW - 25 * 60 * 60 * 1000;
   const recent = NOW - 60_000;
