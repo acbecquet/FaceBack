@@ -1,7 +1,11 @@
 import { timingSafeEqual } from "../tokens";
 
 const enc = new TextEncoder();
-const ITERATIONS = 210_000;
+// Cloudflare Workers' Web Crypto caps PBKDF2 at 100,000 iterations; a higher
+// count throws at runtime in production (local workerd does not enforce the
+// cap, which is why tests pass). 100k is ample for an ephemeral 6-digit code
+// that is salted, single-use, limited to 5 attempts, and expires in 10 minutes.
+const ITERATIONS = 100_000;
 
 function b64(bytes: Uint8Array): string {
   let s = "";
