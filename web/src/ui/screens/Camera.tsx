@@ -49,7 +49,7 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--fb-bg)" }}>
+    <div style={{ height: "100%", width: "100%", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "var(--fb-bg)" }}>
       <div className="fb-topbar">
         <Wordmark size={17} />
         <span role="button" aria-label="Settings" onClick={onOpenSettings} style={{ cursor: "pointer", color: "var(--fb-muted)", display: "flex" }}>
