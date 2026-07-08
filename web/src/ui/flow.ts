@@ -1,7 +1,7 @@
 import { decide, record } from "../units/usageGuard";
 import { hasDetectableFace, looksLikeBackOfHead, type FaceGateResult } from "../units/faceGate";
 
-export type Screen = "signin" | "camera" | "generating" | "result" | "collection" | "settings";
+export type Screen = "camera" | "generating" | "result" | "collection" | "settings";
 
 export class FlowError extends Error {
   code: string;

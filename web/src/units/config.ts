@@ -1,5 +1,4 @@
 export const config = {
-  PBKDF2_ITERATIONS: 210_000,
   MAX_IMAGE_EDGE: 1024, // downscale longest edge before upload
   MIN_GENERATION_INTERVAL_MS: 3_000,
   DAILY_CAP: 50,
