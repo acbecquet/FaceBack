@@ -4,12 +4,13 @@ const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 const COOKIE = "fb_session";
 
 export async function signSession(accountId: string, secret: string, nowMs: number): Promise<string> {
-  return signToken(secret, { sub: accountId }, ONE_YEAR_SECONDS, nowMs);
+  return signToken(secret, { sub: accountId, typ: "session" }, ONE_YEAR_SECONDS, nowMs);
 }
 
 export async function verifySession(token: string, secret: string, nowMs: number): Promise<string | null> {
   const payload = await verifyToken(secret, token, nowMs);
   if (!payload) return null;
+  if (payload.typ !== "session") return null;
   return typeof payload.sub === "string" ? payload.sub : null;
 }
 
