@@ -1,8 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./theme.css";
-import { getAccount } from "./units/auth";
-import { revealApiKey } from "./units/auth";
-import { createIndexedDbWrappingKeyStore } from "./units/indexeddb";
+import { meApi, authApi, type PublicAccount } from "./units/apiClient";
 import { downscaleImage, base64ToBlob } from "./units/imageUtil";
 import { detectFaces } from "./units/faceGate";
 import { generateBackOfHead, GenerationRequestError } from "./units/generationClient";
@@ -11,6 +9,7 @@ import { addItem } from "./units/collection";
 import { saveImageToDevice } from "./units/export";
 import { runGeneration, FlowError, type Screen } from "./ui/flow";
 import { SignIn } from "./ui/screens/SignIn";
+import { AddKey } from "./ui/screens/AddKey";
 import { Camera } from "./ui/screens/Camera";
 import { Generating } from "./ui/screens/Generating";
 import { Result } from "./ui/screens/Result";
@@ -23,7 +22,7 @@ function makeDeps() {
     history: loadHistory(),
     downscale: downscaleImage,
     detectInput: async (b: Blob) => detectFaces(await createImageBitmap(b)),
-    generate: (a: { image: { base64: string; mimeType: string }; apiKey: string }) => generateBackOfHead(a),
+    generate: (a: { image: { base64: string; mimeType: string } }) => generateBackOfHead(a),
     detectOutput: async (b: Blob) => detectFaces(await createImageBitmap(b)),
     toBlob: base64ToBlob,
     saveUsage: saveHistory,
@@ -37,31 +36,32 @@ function messageFor(e: unknown): string {
     if (e.code === "no_face") return "No face detected - try another photo.";
     return "Could not generate. Try again.";
   }
-  if (e instanceof GenerationRequestError) return e.message;
+  if (e instanceof GenerationRequestError) {
+    if (e.code === "daily_limit") return "Daily limit reached. Try again tomorrow.";
+    return e.message;
+  }
   return "Something went wrong. Try again.";
 }
 
 export default function App() {
-  const [account, setAccount] = useState(() => getAccount());
+  const [account, setAccount] = useState<PublicAccount | null | undefined>(undefined);
   const [screen, setScreen] = useState<Screen>("camera");
   const [result, setResult] = useState<{ blob: Blob; url: string } | null>(null);
   const [error, setError] = useState("");
 
-  if (!account) {
-    // NOTE(task-3): SignIn now speaks the hosted passwordless PublicAccount
-    // model, which does not match this screen's local-device Account type.
-    // Task 4 rewires App.tsx to consume PublicAccount end-to-end; for now we
-    // only keep this call site compiling by falling back to the existing
-    // local getAccount() re-read.
-    return <SignIn onSignedIn={() => setAccount(getAccount())} />;
+  async function refreshMe() {
+    setAccount(await meApi.get());
   }
+
+  useEffect(() => {
+    void refreshMe();
+  }, []);
 
   async function handleCapture(blob: Blob) {
     setScreen("generating");
     setError("");
     try {
-      const apiKey = await revealApiKey(createIndexedDbWrappingKeyStore());
-      const gen = await runGeneration({ blob, apiKey }, makeDeps());
+      const gen = await runGeneration({ blob }, makeDeps());
       const outBlob = base64ToBlob(gen.base64, gen.mimeType);
       setResult((prev) => {
         if (prev) URL.revokeObjectURL(prev.url);
@@ -81,6 +81,16 @@ export default function App() {
         // keep the result visible even if the collection write fails
       }
     } catch (e) {
+      if (e instanceof GenerationRequestError && e.code === "unauthorized") {
+        setAccount(null);
+        setScreen("camera");
+        return;
+      }
+      if (e instanceof GenerationRequestError && e.code === "no_key") {
+        await refreshMe();
+        setScreen("camera");
+        return;
+      }
       setError(messageFor(e));
       setScreen("camera");
     }
@@ -92,6 +102,30 @@ export default function App() {
       return null;
     });
     setScreen("camera");
+  }
+
+  if (account === undefined) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading"
+        style={{ height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--fb-bg)" }}
+      >
+        <div
+          className="fb-spinner"
+          style={{ width: 36, height: 36, borderRadius: "50%", border: "4px solid #e7eaee", borderTopColor: "var(--fb-blue)", animation: "fbspin 1s linear infinite" }}
+        />
+        <style>{"@keyframes fbspin{to{transform:rotate(360deg)}}"}</style>
+      </div>
+    );
+  }
+
+  if (account === null) {
+    return <SignIn onSignedIn={setAccount} />;
+  }
+
+  if (!account.hasOwnKey && !account.usesDevKey) {
+    return <AddKey onDone={refreshMe} />;
   }
 
   if (screen === "generating") {
@@ -114,7 +148,16 @@ export default function App() {
   }
 
   if (screen === "settings") {
-    return <Settings onBack={() => setScreen("camera")} onSignedOut={() => setAccount(null)} />;
+    return (
+      <Settings
+        onBack={() => setScreen("camera")}
+        onSignedOut={async () => {
+          await authApi.logout();
+          setAccount(null);
+          setScreen("camera");
+        }}
+      />
+    );
   }
 
   return (

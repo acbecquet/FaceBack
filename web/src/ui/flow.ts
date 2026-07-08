@@ -17,7 +17,7 @@ export interface GenerationDeps {
   history: number[];
   downscale: (b: Blob) => Promise<{ base64: string; mimeType: string; width: number; height: number }>;
   detectInput: (b: Blob) => Promise<FaceGateResult>;
-  generate: (input: { image: { base64: string; mimeType: string }; apiKey: string }) => Promise<{
+  generate: (input: { image: { base64: string; mimeType: string } }) => Promise<{
     base64: string;
     mimeType: string;
   }>;
@@ -27,7 +27,7 @@ export interface GenerationDeps {
 }
 
 export async function runGeneration(
-  input: { blob: Blob; apiKey: string },
+  input: { blob: Blob },
   deps: GenerationDeps,
 ): Promise<{ base64: string; mimeType: string }> {
   const gate = decide(deps.now, deps.history);
@@ -40,10 +40,10 @@ export async function runGeneration(
   const small = await deps.downscale(input.blob);
   const image = { base64: small.base64, mimeType: small.mimeType };
 
-  let result = await deps.generate({ image, apiKey: input.apiKey });
+  let result = await deps.generate({ image });
   // Client-side hybrid: if a face is detected in the result, regenerate ONCE.
   if (!looksLikeBackOfHead(await deps.detectOutput(deps.toBlob(result.base64, result.mimeType)))) {
-    result = await deps.generate({ image, apiKey: input.apiKey });
+    result = await deps.generate({ image });
   }
 
   deps.saveUsage(record(deps.now, deps.history));

@@ -10,13 +10,14 @@ export class GenerationRequestError extends Error {
 }
 
 export async function generateBackOfHead(
-  params: { image: { base64: string; mimeType: string }; apiKey: string },
+  params: { image: { base64: string; mimeType: string } },
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ base64: string; mimeType: string }> {
   const res = await fetchImpl(`${config.FUNCTIONS_BASE_URL}/generate`, {
     method: "POST",
+    credentials: "include",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ image: params.image, key: params.apiKey }),
+    body: JSON.stringify({ image: params.image }),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
