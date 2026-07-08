@@ -141,7 +141,7 @@ Create a `.dev.vars` file at the repo root with dev placeholder secrets (this fi
 ```
 SESSION_SECRET=<any random string, e.g. output of `openssl rand -base64 32`>
 KEY_ENC_SECRET=<any random string, e.g. output of `openssl rand -base64 32`>
-RESEND_API_KEY=dev-placeholder-resend-key
+RESEND_API_KEY=<any placeholder string for local dev; a real re_... key is only needed to actually send email>
 ```
 
 A placeholder `RESEND_API_KEY` is fine for local dev as long as you never exercise a code path that actually calls Resend's API with it (sign-in and key-edit codes will fail to send, but every other route and the D1/KV-backed logic works).
