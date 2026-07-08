@@ -1,5 +1,5 @@
 import { handleGenerate } from "./generate";
-import type { GeminiClient } from "./lib/gemini";
+import type { GeminiClient } from "../../shared/gemini";
 
 const bigImage = "A".repeat(200); // passes the plausibility size floor
 
@@ -40,20 +40,20 @@ test("returns 502 generation_failed when both attempts are implausible", async (
   const c = clientReturning("tiny", "tiny");
   const res = await handleGenerate(req({ image: { base64: "in", mimeType: "image/png" }, key: "k" }), c);
   expect(res.status).toBe(502);
-  expect((await res.json()).error.code).toBe("generation_failed");
+  expect(((await res.json()) as any).error.code).toBe("generation_failed");
 });
 
 test("rejects a request missing the image or key with 400", async () => {
   const c = clientReturning(bigImage);
   const res = await handleGenerate(req({ key: "k" }), c);
   expect(res.status).toBe(400);
-  expect((await res.json()).error.code).toBe("bad_input");
+  expect(((await res.json()) as any).error.code).toBe("bad_input");
 });
 
 test("rejects malformed (non-string) image fields with 400 and makes no upstream call", async () => {
   const c = clientReturning(bigImage);
   const res = await handleGenerate(req({ image: { base64: 123, mimeType: true }, key: "k" }), c);
   expect(res.status).toBe(400);
-  expect((await res.json()).error.code).toBe("bad_input");
+  expect(((await res.json()) as any).error.code).toBe("bad_input");
   expect(c.calls()).toBe(0);
 });

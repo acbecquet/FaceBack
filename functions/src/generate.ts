@@ -1,6 +1,6 @@
-import { BACK_OF_HEAD_PROMPT } from "./lib/prompt";
-import { GeminiError, type GeminiClient, type GeneratedImage } from "./lib/gemini";
-import { json, errorResponse } from "./lib/http";
+import { BACK_OF_HEAD_PROMPT } from "../../shared/prompt";
+import { GeminiError, type GeminiClient, type GeneratedImage } from "../../shared/gemini";
+import { json, errorResponse } from "../../shared/http";
 
 // A plausible image is at least this many base64 chars (guards against empty or
 // degenerate model output). Real JPEG/PNG output is far larger; this only rules

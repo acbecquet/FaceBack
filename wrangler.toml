@@ -1,0 +1,15 @@
+name = "faceback"
+compatibility_date = "2026-06-01"
+pages_build_output_dir = "web/dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "faceback"
+# database_id is filled at provisioning time from `wrangler d1 create faceback`.
+# Local tests and `wrangler pages dev` do not require the remote id.
+database_id = "local"
+
+[[kv_namespaces]]
+binding = "KV"
+# id is filled at provisioning time from `wrangler kv namespace create faceback-kv`.
+id = "local"

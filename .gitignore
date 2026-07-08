@@ -1,0 +1,10 @@
+node_modules/
+
+# Wrangler / Miniflare local dev and test state (D1, KV, R2, secrets, etc.)
+.wrangler/
+.mf/
+.dev.vars
+
+*.tsbuildinfo
+*.log
+.DS_Store
