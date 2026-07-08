@@ -7,9 +7,9 @@ binding = "DB"
 database_name = "faceback"
 # database_id is filled at provisioning time from `wrangler d1 create faceback`.
 # Local tests and `wrangler pages dev` do not require the remote id.
-database_id = "local"
+database_id = "00f97f90-cf2e-47c5-89a7-83dd7d6b0ad6"
 
 [[kv_namespaces]]
 binding = "KV"
 # id is filled at provisioning time from `wrangler kv namespace create faceback-kv`.
-id = "local"
+id = "2c82e3ebe6f84e66be744a464a910a95"
