@@ -254,8 +254,8 @@ The screens and their look stay as built in Phase 1; the changes are confined to
 - Cloudflare Pages hosts the static Vite build from `web/dist` and the Pages Functions in a project-root `functions/` directory.
 - The Phase 1 handlers under `functions/src` are reused; each Pages Function is a small adapter that maps `onRequest(context)` to the shared handler with `context.env` bindings.
 - Cloudflare D1 holds the `accounts` and `dev_allowlist` tables; a KV namespace holds codes, usage counters, and rate-limit counters.
-- The custom domain `faceback.acb-apps.com` is attached to the Pages project.
-- Resend sends the code emails from `acb-apps.com` (default sender `faceback@acb-apps.com`), authenticated by domain records added in Cloudflare DNS.
+- The custom domain `faceback.acb-apps.com` is attached to the Pages project by a CNAME from the authoritative DNS (Squarespace) to the project's `*.pages.dev` hostname; Cloudflare validates that CNAME and provisions the TLS certificate through it.
+- Resend sends the code emails from `acb-apps.com` (default sender `faceback@acb-apps.com`), authenticated by the DKIM, SPF, and verification records Resend specifies, added at Squarespace DNS.
 - The Cloudflare Workers runtime provides Web Crypto server-side, so the Phase 1 PBKDF2, AES-GCM, and HMAC helpers run unchanged on the server.
 
 ### Secrets (set by the owner in Cloudflare, never in the repo)
@@ -274,12 +274,12 @@ The Phase 1 Vite dev server remains available for pure UI work against a mocked 
 ## 13. Provisioning checklist (owner actions)
 
 1. Cloudflare: create the Pages project, one D1 database, and one KV namespace. Exact `wrangler` commands are provided during implementation.
-2. Resend: sign up, verify `acb-apps.com` as a sender by adding the DKIM and SPF records in Cloudflare DNS, and create an API key.
+2. Resend: sign up, add `acb-apps.com` as a sending domain, and create an API key.
 3. Set the three secrets above in Cloudflare. Claude generates strong values for `SESSION_SECRET` and `KEY_ENC_SECRET` for the owner to paste.
-4. DNS: point `faceback.acb-apps.com` at the Pages project, and add the Resend records.
+4. DNS at Squarespace: add a CNAME record `faceback` -> `<project>.pages.dev`, then add the custom domain in Cloudflare Pages so it validates and issues the certificate. Add Resend's DKIM, SPF, and verification records at Squarespace as well.
 5. In the app: sign in as `dev` / `alexanderbecquet0@gmail.com`, paste the Gemini key, and add friends' emails to the allowlist.
 
-DNS assumption to confirm: `acb-apps.com` is managed in Cloudflare. If the zone lives at Squarespace, the email and subdomain records take a different path.
+DNS hosting: `acb-apps.com` is authoritative at Squarespace. The default plan keeps it there and points only the `faceback` subdomain at Cloudflare Pages by CNAME, with the Resend records added at Squarespace too, so nothing on the existing site changes. Optionally, moving the whole zone to Cloudflare (a nameserver change at the registrar) consolidates every record in Cloudflare and makes the Pages domain and certificate fully automatic, at the cost of migrating the existing Squarespace records; this is the owner's call and is not required.
 
 ## 14. Accepted tradeoffs and open items
 
@@ -287,6 +287,7 @@ DNS assumption to confirm: `acb-apps.com` is managed in Cloudflare. If the zone 
 - Session tokens are long-lived and stateless; server-side revocation is deferred (Section 4.3).
 - `/auth/request` reveals account existence; accepted and rate limited (Section 8).
 - KV counters are eventually consistent, allowing marginal cap overspend; accepted at this scale (Section 7).
+- DNS stays at Squarespace by default, with only the `faceback` subdomain CNAMEd to Cloudflare Pages; moving the full zone to Cloudflare is an optional later consolidation (Section 13).
 
 ## 15. Phase 2 (iOS) implications
 
