@@ -4,7 +4,7 @@ import { validateSignup } from "./validate";
 import { checkRateLimit } from "../../data/ratelimit";
 import { createAccount, getAccountByIdentifier, DuplicateAccountError } from "../../data/accounts";
 import { issueCode } from "../../auth/codeStore";
-import type { EmailProvider } from "../../email";
+import { emailSendErrorResponse, type EmailProvider } from "../../email";
 
 export async function handleSignup(req: Request, env: Env, email: EmailProvider): Promise<Response> {
   const parsed = validateSignup(await req.json().catch(() => null));
@@ -21,7 +21,11 @@ export async function handleSignup(req: Request, env: Env, email: EmailProvider)
     if (byEmail.emailVerified)
       return errorResponse("account_exists", "That email is already registered. Sign in instead.", 409);
     const code = await issueCode(env, "auth", byEmail.email);
-    await email.sendCode({ to: byEmail.email, code, purpose: "auth" });
+    try {
+      await email.sendCode({ to: byEmail.email, code, purpose: "auth" });
+    } catch (e) {
+      return emailSendErrorResponse(e);
+    }
     return json({ pending: true });
   }
   if (await getAccountByIdentifier(env, parsed.username))
@@ -36,6 +40,10 @@ export async function handleSignup(req: Request, env: Env, email: EmailProvider)
     throw e;
   }
   const code = await issueCode(env, "auth", account.email);
-  await email.sendCode({ to: account.email, code, purpose: "auth" });
+  try {
+    await email.sendCode({ to: account.email, code, purpose: "auth" });
+  } catch (e) {
+    return emailSendErrorResponse(e);
+  }
   return json({ pending: true });
 }

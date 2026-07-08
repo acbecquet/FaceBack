@@ -4,7 +4,7 @@ import { validateIdentifier } from "./validate";
 import { checkRateLimit } from "../../data/ratelimit";
 import { getAccountByIdentifier } from "../../data/accounts";
 import { issueCode } from "../../auth/codeStore";
-import type { EmailProvider } from "../../email";
+import { emailSendErrorResponse, type EmailProvider } from "../../email";
 
 export async function handleRequest(req: Request, env: Env, email: EmailProvider): Promise<Response> {
   const identifier = validateIdentifier(await req.json().catch(() => null));
@@ -20,6 +20,10 @@ export async function handleRequest(req: Request, env: Env, email: EmailProvider
     return errorResponse("rate_limited", "Too many attempts. Try again later.", 429);
 
   const code = await issueCode(env, "auth", account.email);
-  await email.sendCode({ to: account.email, code, purpose: "auth" });
+  try {
+    await email.sendCode({ to: account.email, code, purpose: "auth" });
+  } catch (e) {
+    return emailSendErrorResponse(e);
+  }
   return json({ pending: true });
 }
