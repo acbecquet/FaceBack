@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
 import { expect, test } from "vitest";
-import { getSessionToken, accountSummary } from "./requestAuth";
+import { getSessionToken, accountSummary, getAuthedAccount } from "./requestAuth";
 import { createAccount } from "../data/accounts";
 import { addToAllowlist } from "../data/allowlist";
+import { signSession } from "./session";
 
 test("reads token from Authorization bearer and from cookie", () => {
   const bearer = new Request("http://x", { headers: { Authorization: "Bearer tok123" } });
@@ -17,4 +18,18 @@ test("accountSummary sets usesDevKey for allow-listed emails", async () => {
   expect((await accountSummary(env, acc)).usesDevKey).toBe(false);
   await addToAllowlist(env, "friend@example.com");
   expect((await accountSummary(env, acc)).usesDevKey).toBe(true);
+});
+
+test("getAuthedAccount resolves a valid signed session to the account", async () => {
+  const acc = await createAccount(env, { username: "sessioned", email: "sessioned@example.com" });
+  const token = await signSession(acc.id, env.SESSION_SECRET, Date.now());
+  const req = new Request("http://x", { headers: { Authorization: `Bearer ${token}` } });
+  const resolved = await getAuthedAccount(req, env);
+  expect(resolved).toEqual(acc);
+});
+
+test("getAuthedAccount returns null with no token and with a garbage token", async () => {
+  expect(await getAuthedAccount(new Request("http://x"), env)).toBeNull();
+  const garbage = new Request("http://x", { headers: { Authorization: "Bearer not-a-real-token" } });
+  expect(await getAuthedAccount(garbage, env)).toBeNull();
 });

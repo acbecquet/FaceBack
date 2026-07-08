@@ -1,12 +1,12 @@
 import type { Env } from "../env";
-import type { Account } from "../data/accounts";
+import { getAccountById, type Account } from "../data/accounts";
 import { isAllowlisted } from "../data/allowlist";
-import { SESSION_COOKIE_NAME } from "./session";
+import { SESSION_COOKIE_NAME, verifySession } from "./session";
 
 export interface PublicAccount {
   username: string;
   email: string;
-  hasKey: boolean;
+  hasOwnKey: boolean;
   isDev: boolean;
   usesDevKey: boolean;
 }
@@ -24,12 +24,20 @@ export function getSessionToken(req: Request): string | null {
   return null;
 }
 
+export async function getAuthedAccount(req: Request, env: Env): Promise<Account | null> {
+  const token = getSessionToken(req);
+  if (!token) return null;
+  const accountId = await verifySession(token, env.SESSION_SECRET, Date.now());
+  if (!accountId) return null;
+  return getAccountById(env, accountId);
+}
+
 export async function accountSummary(env: Env, account: Account): Promise<PublicAccount> {
   const usesDevKey = account.isDev || (await isAllowlisted(env, account.email));
   return {
     username: account.username,
     email: account.email,
-    hasKey: account.hasKey,
+    hasOwnKey: account.hasKey,
     isDev: account.isDev,
     usesDevKey,
   };
