@@ -47,13 +47,14 @@ npx wrangler pages project create faceback --production-branch=main
 If the name `faceback` is already taken globally on `*.pages.dev`, Cloudflare assigns a different project subdomain; use whatever it prints in the DNS step below.
 
 For ongoing deploys, connect the GitHub repo to this Pages project from the Cloudflare dashboard (Workers & Pages > the project > Settings > Builds), with:
-- Build command: `npm --prefix web run build`
+- Build command: `npm --prefix web install && npm --prefix web run build` (the `install` step is required because the web app keeps its own dependencies under `web/`, which the repo-root `npm install` does not cover)
 - Build output directory: `web/dist`
 - Root directory: repo root (leave blank), so the `functions/` directory at the repo root is auto-detected as the Pages Functions for `/api/**`.
 
 For a first manual deploy without waiting on Git integration, build locally and push the build with wrangler:
 
 ```
+npm --prefix web install
 npm --prefix web run build
 npx wrangler pages deploy web/dist --project-name=faceback
 ```
@@ -124,9 +125,10 @@ Once added, that person can sign in with their own email (they create their own 
 
 To run the full app locally against a local D1 database and local KV, with no Cloudflare account needed:
 
-Build the web app.
+Install the web app's dependencies (the web app keeps its own `web/node_modules`, separate from the repo-root install), then build it.
 
 ```
+npm --prefix web install
 npm --prefix web run build
 ```
 
