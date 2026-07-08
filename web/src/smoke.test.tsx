@@ -1,9 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, test } from "vitest";
 import App from "./App";
 
-test("renders the FaceBack wordmark", () => {
+beforeEach(() => localStorage.clear());
+
+test("first run shows the SignIn create-account screen", async () => {
   render(<App />);
-  expect(screen.getByText("FaceBack")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument());
 });
 
 test("test environment exposes crypto.subtle and indexedDB", () => {
