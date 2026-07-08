@@ -1,36 +1,144 @@
-import { useState } from "react";
-import { getAccount, verifyAccountPin, revealApiKey, updateApiKey, signOut } from "../../units/auth";
-import { createIndexedDbWrappingKeyStore } from "../../units/indexeddb";
-import { BackIcon, KeyIcon, PersonIcon, SignOutIcon, LockIcon } from "../icons";
-import { PinInput } from "../components/PinInput";
+import { useEffect, useState } from "react";
+import { keyApi, allowlistApi, ApiError, type PublicAccount } from "../../units/apiClient";
+import { BackIcon, KeyIcon, PersonIcon, SignOutIcon, LockIcon, TrashIcon } from "../icons";
+import { TextField } from "../components/TextField";
 import { Button } from "../components/Button";
 
-export function Settings({ onBack, onSignedOut }: { onBack: () => void; onSignedOut: () => void }) {
-  const account = getAccount();
-  const [pinOpen, setPinOpen] = useState(false);
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
-  const [revealed, setRevealed] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+function onlyDigits(value: string, max: number): string {
+  return value.replace(/\D/g, "").slice(0, max);
+}
+
+function describeError(e: unknown): string {
+  return e instanceof ApiError ? e.message : "Something went wrong. Try again.";
+}
+
+export function Settings({
+  account,
+  onBack,
+  onSignedOut,
+}: {
+  account: PublicAccount;
+  onBack: () => void;
+  onSignedOut: () => void;
+}) {
+  const canManageKey = !account.usesDevKey || account.isDev;
+
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState("");
+
+  const [rowError, setRowError] = useState("");
+  const [editToken, setEditToken] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyError, setKeyError] = useState("");
   const [saved, setSaved] = useState(false);
 
-  async function unlock() {
-    setError("");
-    if (!(await verifyAccountPin(pin))) {
-      setError("Incorrect PIN");
-      return;
+  const [emails, setEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [allowlistBusy, setAllowlistBusy] = useState(false);
+  const [allowlistError, setAllowlistError] = useState("");
+
+  useEffect(() => {
+    if (account.isDev) {
+      void refreshAllowlist();
     }
-    const key = await revealApiKey(createIndexedDbWrappingKeyStore());
-    setRevealed(key);
-    setEditValue(key);
-    setPinOpen(false);
-    setPin("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function refreshAllowlist() {
+    try {
+      const result = await allowlistApi.list();
+      setEmails(result.emails);
+    } catch (e) {
+      setAllowlistError(describeError(e));
+    }
   }
 
-  async function doSignOut() {
-    await signOut();
-    onSignedOut();
+  async function startKeyEdit() {
+    setRowError("");
+    setCodeError("");
+    setCode("");
+    setSaved(false);
+    setCodeBusy(true);
+    try {
+      await keyApi.challenge();
+      setCodeOpen(true);
+    } catch (e) {
+      setRowError(describeError(e));
+    } finally {
+      setCodeBusy(false);
+    }
   }
+
+  async function unlock() {
+    setCodeError("");
+    setCodeBusy(true);
+    try {
+      const result = await keyApi.reveal({ code });
+      setApiKey(result.apiKey ?? "");
+      setEditToken(result.editToken);
+      setCodeOpen(false);
+      setCode("");
+    } catch (e) {
+      setCodeError(describeError(e));
+    } finally {
+      setCodeBusy(false);
+    }
+  }
+
+  function cancelCode() {
+    setCodeOpen(false);
+    setCode("");
+    setCodeError("");
+  }
+
+  async function saveKey() {
+    if (!editToken) return;
+    setKeyBusy(true);
+    setKeyError("");
+    setSaved(false);
+    try {
+      await keyApi.edit({ apiKey, editToken });
+      setSaved(true);
+    } catch (e) {
+      setKeyError(describeError(e));
+    } finally {
+      setKeyBusy(false);
+    }
+  }
+
+  async function addEmail() {
+    const email = newEmail.trim();
+    if (!email) return;
+    setAllowlistBusy(true);
+    setAllowlistError("");
+    try {
+      await allowlistApi.add(email);
+      setNewEmail("");
+      await refreshAllowlist();
+    } catch (e) {
+      setAllowlistError(describeError(e));
+    } finally {
+      setAllowlistBusy(false);
+    }
+  }
+
+  async function removeEmail(email: string) {
+    setAllowlistBusy(true);
+    setAllowlistError("");
+    try {
+      await allowlistApi.remove(email);
+      await refreshAllowlist();
+    } catch (e) {
+      setAllowlistError(describeError(e));
+    } finally {
+      setAllowlistBusy(false);
+    }
+  }
+
+  const codeValid = code.length === 6;
 
   return (
     <div className="fb-screen">
@@ -41,33 +149,83 @@ export function Settings({ onBack, onSignedOut }: { onBack: () => void; onSigned
         <strong>Settings</strong>
         <span style={{ width: 24 }} />
       </div>
-      <div style={{ flex: 1 }}>
-        <Row icon={<PersonIcon />} label={`Account - @${account?.username ?? ""}`} />
-        <Row icon={<KeyIcon />} label="Edit API key" trailing={<LockIcon />} onClick={() => { setPinOpen(true); setRevealed(null); }} />
-        {revealed !== null ? (
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <Row icon={<PersonIcon />} label={`@${account.username}`} trailing={account.email} />
+
+        {canManageKey ? (
+          <Row icon={<KeyIcon />} label="View / edit API key" trailing={<LockIcon />} onClick={startKeyEdit} />
+        ) : (
+          <Row icon={<KeyIcon />} label="Using the shared FaceBack key" />
+        )}
+        {rowError ? <div style={{ color: "#c0271b", fontSize: 13, padding: "0 16px 12px" }}>{rowError}</div> : null}
+
+        {editToken !== null ? (
           <div style={{ padding: 16 }}>
-            <input
-              aria-label="API key"
-              value={editValue}
-              onChange={(e) => { setEditValue(e.target.value); setSaved(false); }}
-              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--fb-line)" }}
+            <TextField
+              label="API key"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setSaved(false);
+              }}
             />
-            <button className="fb-btn" style={{ marginTop: 8 }} onClick={async () => { await updateApiKey(editValue, createIndexedDbWrappingKeyStore()); setSaved(true); }}>
-              Save key
-            </button>
+            {keyError ? <div style={{ color: "#c0271b", fontSize: 13, marginBottom: 8 }}>{keyError}</div> : null}
+            <Button disabled={keyBusy} onClick={saveKey}>
+              {keyBusy ? "Saving..." : "Save key"}
+            </Button>
             {saved ? <div style={{ color: "#1a7f37", fontSize: 12, marginTop: 6 }}>Saved.</div> : null}
           </div>
         ) : null}
-        <Row icon={<SignOutIcon />} label="Sign out" onClick={doSignOut} />
+
+        {account.isDev ? (
+          <div style={{ padding: 16 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Manage invites</div>
+            {allowlistError ? <div style={{ color: "#c0271b", fontSize: 13, marginBottom: 8 }}>{allowlistError}</div> : null}
+            {emails.map((email) => (
+              <div
+                key={email}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--fb-line)" }}
+              >
+                <span style={{ flex: 1 }}>{email}</span>
+                <span
+                  role="button"
+                  aria-label={`Remove ${email}`}
+                  onClick={() => !allowlistBusy && removeEmail(email)}
+                  style={{ cursor: "pointer", color: "var(--fb-muted)", display: "flex" }}
+                >
+                  <TrashIcon />
+                </span>
+              </div>
+            ))}
+            <div style={{ marginTop: 12 }}>
+              <TextField label="Add email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              <Button disabled={allowlistBusy || newEmail.trim() === ""} onClick={addEmail}>
+                Add
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <Row icon={<SignOutIcon />} label="Sign out" onClick={onSignedOut} />
       </div>
-      {pinOpen ? (
+
+      {codeOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 20, width: 260 }}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Enter PIN</div>
-            <PinInput value={pin} onChange={setPin} label="Enter PIN" />
-            {error ? <div style={{ color: "#c0271b", fontSize: 13 }}>{error}</div> : null}
-            <Button onClick={unlock}>Unlock</Button>
-            <button className="fb-btn sec" style={{ marginTop: 8 }} onClick={() => { setPinOpen(false); setPin(""); setError(""); }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Enter the code we emailed you</div>
+            <TextField
+              label="Verification code"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="6-digit code"
+              value={code}
+              onChange={(e) => setCode(onlyDigits(e.target.value, 6))}
+            />
+            {codeError ? <div style={{ color: "#c0271b", fontSize: 13 }}>{codeError}</div> : null}
+            <Button disabled={!codeValid || codeBusy} onClick={unlock}>
+              {codeBusy ? "Unlocking..." : "Unlock"}
+            </Button>
+            <button className="fb-btn sec" style={{ marginTop: 8 }} onClick={cancelCode}>
               Cancel
             </button>
           </div>

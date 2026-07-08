@@ -150,6 +150,7 @@ export default function App() {
   if (screen === "settings") {
     return (
       <Settings
+        account={account}
         onBack={() => setScreen("camera")}
         onSignedOut={async () => {
           await authApi.logout();
