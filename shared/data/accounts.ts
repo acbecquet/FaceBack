@@ -1,5 +1,10 @@
 import type { Env } from "../env";
 
+// The shared dev account's id, seeded by migration 0002. Requests that resolve
+// to using the shared key (the dev owner, or an allowlisted friend) decrypt
+// this account's stored key rather than the caller's own.
+export const DEV_ACCOUNT_ID = "acc_dev";
+
 export interface Account {
   id: string;
   username: string;
