@@ -3,6 +3,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { meApi, type PublicAccount } from "./units/apiClient";
 import { generateBackOfHead, GenerationRequestError } from "./units/generationClient";
+import { addItem } from "./units/collection";
+import { saveImageToDevice } from "./units/export";
 
 vi.mock("./units/apiClient", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./units/apiClient")>();
@@ -41,6 +43,19 @@ vi.mock("./units/imageUtil", async (importOriginal) => {
   };
 });
 
+// Saving a result writes to the library and triggers a device download; spy on
+// both so the tests can assert the Save-button behavior without real IndexedDB
+// or a real download.
+vi.mock("./units/collection", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./units/collection")>();
+  return { ...actual, addItem: vi.fn().mockResolvedValue(undefined) };
+});
+
+vi.mock("./units/export", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./units/export")>();
+  return { ...actual, saveImageToDevice: vi.fn() };
+});
+
 const originalCreateImageBitmap = (globalThis as any).createImageBitmap;
 
 beforeEach(() => {
@@ -50,6 +65,11 @@ beforeEach(() => {
   (globalThis as any).createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100, close: () => {} });
   vi.mocked(meApi.get).mockReset();
   vi.mocked(generateBackOfHead).mockReset();
+  vi.mocked(addItem).mockClear();
+  vi.mocked(saveImageToDevice).mockClear();
+  // jsdom does not implement object URLs; the result screen creates one.
+  (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => "blob:mock");
+  (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
 });
 
 afterEach(() => {
@@ -159,4 +179,21 @@ test("a generate call that throws unauthorized signs the user out to SignIn", as
   uploadPhoto(container);
 
   await waitFor(() => expect(screen.getByRole("button", { name: /send code/i })).toBeInTheDocument());
+});
+
+test("generating alone does not save; Save downloads, adds to the library, and returns to the camera", async () => {
+  vi.mocked(generateBackOfHead).mockResolvedValue({ base64: "b3V0", mimeType: "image/jpeg" });
+  const { container } = await renderCameraApp(account());
+
+  uploadPhoto(container);
+
+  // Result screen reached, but generation by itself must not have saved anything.
+  const saveBtn = await screen.findByRole("button", { name: /^save$/i });
+  expect(vi.mocked(addItem)).not.toHaveBeenCalled();
+
+  fireEvent.click(saveBtn);
+
+  await waitFor(() => expect(vi.mocked(saveImageToDevice)).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(addItem)).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(screen.getByRole("button", { name: /your backs/i })).toBeInTheDocument());
 });

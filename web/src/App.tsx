@@ -15,7 +15,7 @@ import { Generating } from "./ui/screens/Generating";
 import { Result } from "./ui/screens/Result";
 import { Collection } from "./ui/screens/Collection";
 import { Settings } from "./ui/screens/Settings";
-import { CameraIcon, GridIcon } from "./ui/icons";
+import { GridIcon } from "./ui/icons";
 
 function makeDeps() {
   return {
@@ -70,18 +70,6 @@ export default function App() {
         return { blob: outBlob, url: URL.createObjectURL(outBlob) };
       });
       setScreen("result");
-      try {
-        await addItem({
-          id: crypto.randomUUID(),
-          imageBlob: outBlob,
-          mimeType: gen.mimeType,
-          width: 0,
-          height: 0,
-          createdAt: new Date().toISOString(),
-        });
-      } catch {
-        // keep the result visible even if the collection write fails
-      }
     } catch (e) {
       setScreen("camera");
       if (e instanceof GenerationRequestError && e.code === "unauthorized") {
@@ -103,6 +91,24 @@ export default function App() {
       return null;
     });
     setScreen("camera");
+  }
+
+  async function handleSave() {
+    if (!result) return;
+    saveImageToDevice(result.blob, "faceback-back-of-head.jpg");
+    try {
+      await addItem({
+        id: crypto.randomUUID(),
+        imageBlob: result.blob,
+        mimeType: result.blob.type || "image/jpeg",
+        width: 0,
+        height: 0,
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      // return to the camera even if the library write fails
+    }
+    discardResult();
   }
 
   if (account === undefined) {
@@ -137,7 +143,7 @@ export default function App() {
     return (
       <Result
         imageUrl={result.url}
-        onSave={() => saveImageToDevice(result.blob, "faceback-back-of-head.jpg")}
+        onSave={handleSave}
         onRetry={discardResult}
         onDiscard={discardResult}
       />
@@ -171,9 +177,6 @@ export default function App() {
         <Camera onCaptured={handleCapture} onOpenSettings={() => { setError(""); setScreen("settings"); }} />
       </div>
       <div className="fb-tabbar">
-        <button className="fb-tab active" onClick={() => { setError(""); setScreen("camera"); }}>
-          <CameraIcon /><span>Camera</span>
-        </button>
         <button className="fb-tab" onClick={() => { setError(""); setScreen("collection"); }}>
           <GridIcon /><span>Your Backs</span>
         </button>

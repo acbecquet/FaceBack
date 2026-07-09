@@ -10,7 +10,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--fb-text); }
-.fb-screen { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; background: var(--fb-bg); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+.fb-screen { max-width: 480px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; background: var(--fb-bg); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 .fb-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--fb-bg); border-bottom: 1px solid var(--fb-line); }
 .fb-wordmark { font-weight: 800; letter-spacing: -0.03em; color: var(--fb-blue); }
 .fb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 12px; border: none; border-radius: var(--fb-radius); background: var(--fb-blue); color: #fff; font-weight: 650; font-size: 15px; cursor: pointer; }

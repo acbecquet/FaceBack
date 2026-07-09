@@ -57,9 +57,9 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
         </span>
       </div>
       <div style={{ flex: 1, position: "relative", background: "#14161a" }}>
-        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: facing === "user" ? "scaleX(-1)" : undefined }} />
         <div style={{ position: "absolute", top: 10, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 12 }}>
-          {err || "Back camera - tap switch for front"}
+          {err || (facing === "user" ? "Front camera - tap switch for back" : "Back camera - tap switch for front")}
         </div>
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <label aria-label="Upload photo" style={{ color: "#fff", cursor: "pointer", display: "flex" }}>

@@ -197,7 +197,7 @@ export function Settings({
         <strong>Settings</strong>
         <span style={{ width: 24 }} />
       </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <Row icon={<PersonIcon />} label={`@${account.username}`} trailing={account.email} />
 
         {canManageKey ? (

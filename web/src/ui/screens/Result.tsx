@@ -15,7 +15,7 @@ export function Result({
   return (
     <div className="fb-screen">
       <div className="fb-topbar"><strong>It's just the back of their head.</strong><span /></div>
-      <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
         <img src={imageUrl} alt="the back of your head" style={{ width: "100%", borderRadius: 14, background: "var(--fb-card)" }} />
         <Button onClick={onSave}><DownloadIcon /> Save</Button>
         <div style={{ display: "flex", gap: 8 }}>

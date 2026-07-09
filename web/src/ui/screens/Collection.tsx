@@ -51,7 +51,7 @@ export function Collection({ onBack }: { onBack: () => void }) {
           {selecting ? "Cancel" : "Select"}
         </button>
       </div>
-      <div style={{ flex: 1, padding: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12 }}>
         {items.length === 0 ? (
           <div style={{ color: "var(--fb-muted)", textAlign: "center", marginTop: 40 }}>No backs yet.</div>
         ) : (
