@@ -14,8 +14,8 @@ export async function verifySession(token: string, secret: string, nowMs: number
   return typeof payload.sub === "string" ? payload.sub : null;
 }
 
-export function sessionCookie(token: string): string {
-  return `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${ONE_YEAR_SECONDS}`;
+export function sessionCookie(token: string, maxAgeSeconds: number = ONE_YEAR_SECONDS): string {
+  return `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
 export function clearSessionCookie(): string {

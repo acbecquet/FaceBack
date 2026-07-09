@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
-import { keyApi, allowlistApi, ApiError, type PublicAccount } from "../../units/apiClient";
-import { BackIcon, KeyIcon, PersonIcon, SignOutIcon, LockIcon, TrashIcon } from "../icons";
+import { keyApi, allowlistApi, shareApi, ApiError, type PublicAccount } from "../../units/apiClient";
+import { BackIcon, KeyIcon, PersonIcon, SignOutIcon, LockIcon, TrashIcon, LinkIcon, CopyIcon, ClockIcon, ChevronIcon } from "../icons";
 import { TextField } from "../components/TextField";
 import { Button } from "../components/Button";
 
 function onlyDigits(value: string, max: number): string {
   return value.replace(/\D/g, "").slice(0, max);
+}
+
+function fmtRemaining(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function describeError(e: unknown): string {
@@ -39,6 +45,13 @@ export function Settings({
   const [newEmail, setNewEmail] = useState("");
   const [allowlistBusy, setAllowlistBusy] = useState(false);
   const [allowlistError, setAllowlistError] = useState("");
+
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareExpiresAt, setShareExpiresAt] = useState(0);
+  const [shareRemaining, setShareRemaining] = useState(0);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (account.isDev) {
@@ -138,6 +151,41 @@ export function Settings({
     }
   }
 
+  useEffect(() => {
+    if (!shareUrl) return;
+    const tick = () => setShareRemaining(Math.max(0, Math.round((shareExpiresAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [shareUrl, shareExpiresAt]);
+
+  async function createShareLink() {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareError("");
+    setCopied(false);
+    try {
+      const res = await shareApi.create();
+      setShareUrl(res.url);
+      setShareExpiresAt(Date.now() + res.expiresInSeconds * 1000);
+    } catch (e) {
+      setShareError(describeError(e));
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function copyShareLink() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setShareError("Could not copy - long-press the link to copy it.");
+    }
+  }
+
   const codeValid = code.length === 6;
 
   return (
@@ -175,6 +223,25 @@ export function Settings({
             </Button>
             {saved ? <div style={{ color: "#1a7f37", fontSize: 12, marginTop: 6 }}>Saved.</div> : null}
           </div>
+        ) : null}
+
+        {account.isDev ? (
+          <>
+            <Row icon={<LinkIcon />} label="Create share link" trailing={<ChevronIcon />} onClick={createShareLink} />
+            {shareError ? <div style={{ color: "#c0271b", fontSize: 13, padding: "0 16px 12px" }}>{shareError}</div> : null}
+            {shareUrl ? (
+              <div style={{ padding: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Share link</div>
+                <TextField label="Anyone with this link is signed into your account" value={shareUrl} readOnly />
+                <Button onClick={copyShareLink}>
+                  <CopyIcon /> {copied ? "Copied" : "Copy link"}
+                </Button>
+                <div style={{ color: "var(--fb-muted)", fontSize: 12, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <ClockIcon /> {shareRemaining > 0 ? `Expires in ${fmtRemaining(shareRemaining)}` : "Expired - create a new link"}
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : null}
 
         {account.isDev ? (

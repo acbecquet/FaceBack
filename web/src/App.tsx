@@ -15,6 +15,7 @@ import { Generating } from "./ui/screens/Generating";
 import { Result } from "./ui/screens/Result";
 import { Collection } from "./ui/screens/Collection";
 import { Settings } from "./ui/screens/Settings";
+import { CameraIcon, GridIcon } from "./ui/icons";
 
 function makeDeps() {
   return {
@@ -162,19 +163,19 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: "100dvh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--fb-bg)" }}>
+    <div style={{ height: "100dvh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--fb-bg)", paddingTop: "env(safe-area-inset-top)" }}>
       {error ? (
         <div style={{ background: "#c0271b", color: "#fff", padding: "8px 14px", fontSize: 13, textAlign: "center" }}>{error}</div>
       ) : null}
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <Camera onCaptured={handleCapture} onOpenSettings={() => { setError(""); setScreen("settings"); }} />
       </div>
-      <div style={{ display: "flex", borderTop: "1px solid var(--fb-line)", background: "var(--fb-card)" }}>
-        <button className="fb-btn sec" style={{ borderRadius: 0, border: "none" }} onClick={() => { setError(""); setScreen("camera"); }}>
-          Camera
+      <div className="fb-tabbar">
+        <button className="fb-tab active" onClick={() => { setError(""); setScreen("camera"); }}>
+          <CameraIcon /><span>Camera</span>
         </button>
-        <button className="fb-btn sec" style={{ borderRadius: 0, border: "none" }} onClick={() => { setError(""); setScreen("collection"); }}>
-          Your Backs
+        <button className="fb-tab" onClick={() => { setError(""); setScreen("collection"); }}>
+          <GridIcon /><span>Your Backs</span>
         </button>
       </div>
     </div>

@@ -147,3 +147,9 @@ export const allowlistApi = {
     );
   },
 };
+
+export const shareApi = {
+  create(fetchImpl?: typeof fetch): Promise<{ url: string; expiresInSeconds: number }> {
+    return call("/share", { method: "POST" }, fetchImpl);
+  },
+};
