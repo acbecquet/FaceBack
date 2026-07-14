@@ -5,7 +5,7 @@ import { downscaleImage, base64ToBlob } from "./units/imageUtil";
 import { detectFaces } from "./units/faceGate";
 import { generateBackOfHead, GenerationRequestError } from "./units/generationClient";
 import { loadHistory, saveHistory } from "./units/usageGuard";
-import { addItem } from "./units/collection";
+import { addItem, newId } from "./units/collection";
 import { saveImageToDevice } from "./units/export";
 import { runGeneration, FlowError, type Screen } from "./ui/flow";
 import { SignIn } from "./ui/screens/SignIn";
@@ -48,7 +48,7 @@ function messageFor(e: unknown): string {
 export default function App() {
   const [account, setAccount] = useState<PublicAccount | null | undefined>(undefined);
   const [screen, setScreen] = useState<Screen>("camera");
-  const [result, setResult] = useState<{ blob: Blob; url: string } | null>(null);
+  const [result, setResult] = useState<{ blob: Blob; url: string; originalUrl: string } | null>(null);
   const [error, setError] = useState("");
 
   async function refreshMe() {
@@ -66,8 +66,11 @@ export default function App() {
       const gen = await runGeneration({ blob }, makeDeps());
       const outBlob = base64ToBlob(gen.base64, gen.mimeType);
       setResult((prev) => {
-        if (prev) URL.revokeObjectURL(prev.url);
-        return { blob: outBlob, url: URL.createObjectURL(outBlob) };
+        if (prev) {
+          URL.revokeObjectURL(prev.url);
+          URL.revokeObjectURL(prev.originalUrl);
+        }
+        return { blob: outBlob, url: URL.createObjectURL(outBlob), originalUrl: URL.createObjectURL(blob) };
       });
       setScreen("result");
     } catch (e) {
@@ -87,7 +90,10 @@ export default function App() {
 
   function discardResult() {
     setResult((prev) => {
-      if (prev) URL.revokeObjectURL(prev.url);
+      if (prev) {
+        URL.revokeObjectURL(prev.url);
+        URL.revokeObjectURL(prev.originalUrl);
+      }
       return null;
     });
     setScreen("camera");
@@ -95,20 +101,29 @@ export default function App() {
 
   async function handleSave() {
     if (!result) return;
-    saveImageToDevice(result.blob, "faceback-back-of-head.jpg");
+    const blob = result.blob;
+    let saveError = "";
     try {
       await addItem({
-        id: crypto.randomUUID(),
-        imageBlob: result.blob,
-        mimeType: result.blob.type || "image/jpeg",
+        id: newId(),
+        imageBlob: blob,
+        mimeType: blob.type || "image/jpeg",
         width: 0,
         height: 0,
         createdAt: new Date().toISOString(),
       });
     } catch {
-      // return to the camera even if the library write fails
+      // Don't fail silently: if the library write fails, tell the user (the
+      // download below still gives them the image).
+      saveError = "Saved the download, but couldn't add it to Your Backs on this device.";
+    }
+    try {
+      saveImageToDevice(blob, "faceback-back-of-head.jpg");
+    } catch {
+      // The device download is best-effort; the library copy is the point.
     }
     discardResult();
+    if (saveError) setError(saveError);
   }
 
   if (account === undefined) {
@@ -142,6 +157,7 @@ export default function App() {
   if (screen === "result" && result) {
     return (
       <Result
+        originalUrl={result.originalUrl}
         imageUrl={result.url}
         onSave={handleSave}
         onRetry={discardResult}

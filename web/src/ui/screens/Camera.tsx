@@ -57,7 +57,7 @@ export function Camera({ onCaptured, onOpenSettings }: { onCaptured: (blob: Blob
         </span>
       </div>
       <div style={{ flex: 1, position: "relative", background: "#14161a" }}>
-        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: facing === "user" ? "scaleX(-1)" : undefined }} />
+        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", top: 10, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 12 }}>
           {err || (facing === "user" ? "Front camera - tap switch for back" : "Back camera - tap switch for front")}
         </div>
