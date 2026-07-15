@@ -1,8 +1,10 @@
 import SwiftUI
+import FaceBackKit
 
 /// The navigation state machine. Mirrors the render precedence in
 /// `web/src/App.tsx`: loading -> SignIn -> AddKey -> Camera.
 struct RootView: View {
+    let api: APIClient
     let session: SessionModel
 
     var body: some View {
@@ -15,7 +17,7 @@ struct RootView: View {
             if session.needsKey {
                 AddKeyView(session: session)
             } else {
-                CameraPlaceholderView()
+                CameraFlowView(api: api, session: session)
             }
         }
     }

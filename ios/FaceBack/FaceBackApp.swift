@@ -3,13 +3,18 @@ import FaceBackKit
 
 @main
 struct FaceBackApp: App {
-    @State private var session = SessionModel(
-        api: APIClient(baseURL: AppConfig.baseURL, session: .fbSession)
-    )
+    private let api: APIClient
+    @State private var session: SessionModel
+
+    init() {
+        let api = APIClient(baseURL: AppConfig.baseURL, session: .fbSession)
+        self.api = api
+        _session = State(initialValue: SessionModel(api: api))
+    }
 
     var body: some Scene {
         WindowGroup {
-            RootView(session: session)
+            RootView(api: api, session: session)
                 .task { await session.refresh() }
                 .preferredColorScheme(.light)
         }
