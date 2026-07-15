@@ -5,10 +5,13 @@ on:
     paths:
       - "ios/**"
       - ".github/workflows/ios.yml"
-  pull_request:
-    paths:
-      - "ios/**"
-      - ".github/workflows/ios.yml"
+
+# One run per branch; a newer push cancels an in-flight run. Push-triggered
+# runs also surface as checks on the open PR, so no separate pull_request
+# trigger is needed (and it avoids duplicate runs).
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   kit-linux:
@@ -26,6 +29,13 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - name: Select latest stable Xcode
+        run: |
+          ls -d /Applications/Xcode_*.app || true
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          echo "Selecting: $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
       - name: Install tools
         run: brew install xcodegen xcbeautify
       - name: Generate Xcode project
