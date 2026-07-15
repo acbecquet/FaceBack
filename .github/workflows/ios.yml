@@ -1,0 +1,56 @@
+name: iOS
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+
+jobs:
+  kit-linux:
+    name: FaceBackKit (Linux)
+    runs-on: ubuntu-latest
+    container: swift:5.10
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        working-directory: ios/FaceBackKit
+        run: swift test
+
+  build-test:
+    name: App build & test (Simulator)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Select a simulator
+        id: sim
+        run: |
+          NAME=$(xcrun simctl list devices available | grep -Eo 'iPhone 1[5-9]( Pro)?( Max)?' | head -1)
+          echo "Using simulator: ${NAME:-iPhone 15}"
+          echo "name=${NAME:-iPhone 15}" >> "$GITHUB_OUTPUT"
+      - name: Build & test
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project FaceBack.xcodeproj \
+            -scheme FaceBack \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: ios/TestResults.xcresult
