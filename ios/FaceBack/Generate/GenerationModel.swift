@@ -7,8 +7,8 @@ enum GenerationModelError: Error { case encodeFailed }
 
 /// Owns the generation phase and runs the Phase-2 `GenerationFlow` against real
 /// deps (Vision, CoreGraphics, `APIClient`, `UserDefaults`). Mirrors the
-/// `handleCapture` logic in `web/src/App.tsx`. Face detection is injectable so
-/// the flow can be unit-tested without a face image.
+/// `handleCapture` logic in `web/src/App.tsx`. Face detection and usage history
+/// are injectable so the flow can be unit-tested hermetically.
 @MainActor
 @Observable
 final class GenerationModel {
@@ -22,17 +22,23 @@ final class GenerationModel {
     private let session: SessionModel
     private let inputHasFace: (UIImage) -> Bool
     private let outputHasFace: (UIImage) -> Bool
+    private let loadHistory: () -> [Date]
+    private let saveHistory: ([Date]) -> Void
 
     nonisolated init(
         api: FaceBackAPI,
         session: SessionModel,
         inputHasFace: @escaping (UIImage) -> Bool = FaceGate.hasFaceForInput,
-        outputHasFace: @escaping (UIImage) -> Bool = FaceGate.hasFaceForOutput
+        outputHasFace: @escaping (UIImage) -> Bool = FaceGate.hasFaceForOutput,
+        loadHistory: @escaping () -> [Date] = UsageStore.load,
+        saveHistory: @escaping ([Date]) -> Void = UsageStore.save
     ) {
         self.api = api
         self.session = session
         self.inputHasFace = inputHasFace
         self.outputHasFace = outputHasFace
+        self.loadHistory = loadHistory
+        self.saveHistory = saveHistory
     }
 
     func generate(from original: UIImage) async {
@@ -42,11 +48,13 @@ final class GenerationModel {
         let api = self.api
         let inputHasFace = self.inputHasFace
         let outputHasFace = self.outputHasFace
+        let loadHistory = self.loadHistory
+        let saveHistory = self.saveHistory
 
         let deps = GenerationDeps(
             now: { Date() },
-            loadHistory: { UsageStore.load() },
-            saveHistory: { UsageStore.save($0) },
+            loadHistory: loadHistory,
+            saveHistory: saveHistory,
             inputHasFace: { inputHasFace(original) },
             downscale: {
                 guard let payload = ImageEncoder.encodeForUpload(original) else {

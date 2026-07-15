@@ -24,6 +24,21 @@ final class GenerationModelTests: XCTestCase {
         }
     }
 
+    /// Builds a model with an empty, non-persisted usage history so the throttle
+    /// never interferes and tests stay hermetic.
+    private func makeModel(
+        api: FaceBackAPI,
+        session: SessionModel,
+        inputHasFace: @escaping (UIImage) -> Bool = { _ in true },
+        outputHasFace: @escaping (UIImage) -> Bool = { _ in false }
+    ) -> GenerationModel {
+        GenerationModel(
+            api: api, session: session,
+            inputHasFace: inputHasFace, outputHasFace: outputHasFace,
+            loadHistory: { [] }, saveHistory: { _ in }
+        )
+    }
+
     private func solidImage() -> UIImage {
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
@@ -44,7 +59,7 @@ final class GenerationModelTests: XCTestCase {
     func testNoFaceInputShowsNoFaceMessage() async {
         let api = FakeAPI()
         let session = SessionModel(api: api)
-        let model = GenerationModel(api: api, session: session, inputHasFace: { _ in false })
+        let model = makeModel(api: api, session: session, inputHasFace: { _ in false })
         await model.generate(from: solidImage())
         if case .idle = model.phase {} else { XCTFail("expected idle") }
         XCTAssertEqual(model.errorMessage, "No face detected - try another photo.")
@@ -53,8 +68,7 @@ final class GenerationModelTests: XCTestCase {
     func testHappyPathProducesResult() async {
         let api = FakeAPI(); api.generateResult = jpegPayload()
         let session = SessionModel(api: api)
-        let model = GenerationModel(api: api, session: session,
-                                    inputHasFace: { _ in true }, outputHasFace: { _ in false })
+        let model = makeModel(api: api, session: session)
         await model.generate(from: solidImage())
         if case .result = model.phase {} else { XCTFail("expected result") }
         XCTAssertNil(model.errorMessage)
@@ -63,8 +77,7 @@ final class GenerationModelTests: XCTestCase {
     func testDailyLimitMapsToCopy() async {
         let api = FakeAPI(); api.generateError = APIError(code: "daily_limit", message: "x")
         let session = SessionModel(api: api)
-        let model = GenerationModel(api: api, session: session,
-                                    inputHasFace: { _ in true }, outputHasFace: { _ in false })
+        let model = makeModel(api: api, session: session)
         await model.generate(from: solidImage())
         XCTAssertEqual(model.errorMessage, "Daily limit reached. Try again tomorrow.")
     }
@@ -77,8 +90,7 @@ final class GenerationModelTests: XCTestCase {
         XCTAssertEqual(session.account, .signedIn(account()))
 
         api.generateError = APIError(code: "unauthorized", message: "x")
-        let model = GenerationModel(api: api, session: session,
-                                    inputHasFace: { _ in true }, outputHasFace: { _ in false })
+        let model = makeModel(api: api, session: session)
         await model.generate(from: solidImage())
         XCTAssertEqual(session.account, .signedOut)
     }
