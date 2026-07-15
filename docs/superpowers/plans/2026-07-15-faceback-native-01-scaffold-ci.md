@@ -348,3 +348,11 @@ Re-commit the workflow edit and push until both jobs are green.
 - **Type consistency:** `FaceBackKit.version` (Task 1) is the only produced symbol and is consumed nowhere yet. `loading-spinner` accessibility id is defined in `LoadingView` (Task 2) and asserted in `LaunchTests` (Task 3) - consistent. The bundle id `com.becquet.faceback` matches the Global Constraints.
 
 **Deliverable:** a green two-job CI pipeline on `native-swiftui-port` proving the Linux-authored, runner-verified loop end to end, with a minimal SwiftUI app that launches to a spinner.
+
+## As-built notes (2026-07-15, executed green)
+
+Deviations from the steps above, kept for accuracy:
+
+- **Test target:** used a minimal unit-test target `FaceBackTests` (`AppSmokeTests.testAppModuleCompilesAndLoads`) instead of the XCUITest `FaceBackUITests`/`LaunchTests` in Task 3. It proves the `xcodebuild test` pipeline on the Simulator reliably; XCUITest plus screenshots are deferred to a phase with real screens to drive.
+- **CI workflow** needed three fixes to reach green (all in `.github/workflows/ios.yml`): select the latest Xcode on the runner (XcodeGen emits Xcode 16 format `77` that the default Xcode 15.x cannot read); pick the Simulator by UDID via `simctl ... -j | jq` rather than by name; and a push-only trigger plus a `concurrency` group to avoid duplicate runs.
+- **project.yml** includes an explicit `schemes:` block for the `FaceBack` scheme and generates the Info.plist via the `info:` block (git-ignored).
