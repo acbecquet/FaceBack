@@ -63,7 +63,7 @@ These are the native port's internal build phases; the original `2026-07-07-face
 | --- | --- | --- | --- |
 | 1 - Scaffold & CI | `2026-07-15-faceback-native-01-scaffold-ci.md` | `ios/` scaffold, XcodeGen, FaceBackKit skeleton, green two-job CI (the walking skeleton) | Done - green CI |
 | 2 - FaceBackKit logic | `2026-07-15-faceback-native-02-kit.md` | models, APIClient, UsageGuard, image math, GenerationFlow; `swift test` green on Linux | Done (23 tests) |
-| 3 - App shell & auth | `2026-07-15-faceback-native-03-app-shell-auth.md` | SessionModel, navigation state machine, Theme and components, Loading/SignIn/AddKey | Planned |
+| 3 - App shell & auth | `2026-07-15-faceback-native-03-app-shell-auth.md` | SessionModel, navigation state machine, Theme and components, Loading/SignIn/AddKey | Done (9 tests) |
 | 4 - Camera, generate, result | `2026-07-15-faceback-native-04-camera-generate-result.md` | CameraModel, AVFoundation, Vision face-gate, PHPicker, GenerationModel, Camera/Generating/Result, save-to-Photos | Planned |
 | 5 - Delivery to device | `2026-07-15-faceback-native-05-delivery-testflight.md` | fastlane signing, App Store Connect setup, TestFlight upload | Planned |
 
@@ -93,6 +93,18 @@ Learnings for future Kit work:
 - Test the network layer by injecting a fake `HTTPTransport`, not by mocking `URLProtocol` (unreliable in swift-corelibs-foundation on Linux). `HTTPTransport` is also the seam the app wires to a real cookie-carrying `URLSession` in Phase 3.
 
 `GenerationFlow` runs against injected closures (`inputHasFace`/`downscale`/`generate`/`outputHasFace`); Phase 4 supplies the Vision/CoreGraphics/`APIClient` implementations, with the forgiving degrade-open living in the app's `inputHasFace` closure.
+
+#### Phase 3 learnings (2026-07-15, complete)
+
+The app shell and auth are complete and green: `SessionModel` (`@MainActor @Observable`), the `RootView` navigation switch, the ported `Theme` + components (`Wordmark`/`FBButton`/`FBTextField`/`EyeButton`), and the Loading/SignIn/AddKey screens, with a cookie-carrying `URLSession` wired into `URLSessionTransport`.
+Nine app unit tests pass on the Simulator; it compiled on the first push.
+Learnings:
+
+- A `@MainActor @Observable` model with a `nonisolated init` constructs cleanly as a SwiftUI `@State` default (and in non-`@MainActor` tests), while its `@MainActor` async methods keep state mutation on the main thread after each `await`.
+- App-target (SwiftUI) changes are validated only by the macOS `build-test` job (roughly 4-5 min); `kit-linux` is unaffected by them.
+- `AppConfig.baseURL` is currently `https://faceback.pages.dev/api` and MUST be confirmed against the real deployed origin before Phase 4 integration and device testing.
+
+Phase 4 replaces `CameraPlaceholderView` with the real Camera and generation pipeline, wiring `GenerationFlow`'s injected closures to Vision, AVFoundation, CoreGraphics, and `APIClient`.
 
 ## 4. Architecture and module layout
 
