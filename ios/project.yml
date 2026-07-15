@@ -1,0 +1,51 @@
+name: FaceBack
+options:
+  bundleIdPrefix: com.becquet
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+packages:
+  FaceBackKit:
+    path: FaceBackKit
+targets:
+  FaceBack:
+    type: application
+    platform: iOS
+    sources:
+      - path: FaceBack
+    dependencies:
+      - package: FaceBackKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.becquet.faceback
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGNING_ALLOWED: "NO"
+        GENERATE_INFOPLIST_FILE: "NO"
+    info:
+      path: FaceBack/Info.plist
+      properties:
+        CFBundleDisplayName: FaceBack
+        UILaunchScreen: {}
+        NSCameraUsageDescription: "FaceBack uses the camera to take the photo it turns into the back of a head."
+        NSPhotoLibraryAddUsageDescription: "FaceBack saves your generated image to your photo library."
+  FaceBackTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: FaceBackTests
+    dependencies:
+      - target: FaceBack
+    settings:
+      base:
+        CODE_SIGNING_ALLOWED: "NO"
+        GENERATE_INFOPLIST_FILE: "YES"
+schemes:
+  FaceBack:
+    build:
+      targets:
+        FaceBack: all
+        FaceBackTests: [test]
+    test:
+      targets:
+        - FaceBackTests
