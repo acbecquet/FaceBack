@@ -1,6 +1,6 @@
 # FaceBack Native (SwiftUI iOS) - Design Specification
 
-- Status: Approved design, ready for implementation planning.
+- Status: Approved and living. This is the overarching master spec, kept current as the port is built phase by phase (see Section 3.3).
 - Date: 2026-07-14.
 - Author: Charlie (becquetcharlie@gmail.com) with Claude.
 - Relationship: this is the detailed design for "Phase 2" anticipated in `2026-07-07-faceback-design.md`.
@@ -52,6 +52,24 @@ These are out of the MVP but will be ported with equal fidelity afterward:
 - Dev-only tools: allowlist invites and the 1-hour dev share link.
 
 Deferring these is a phasing decision, not a UX change; the deferred screens match the web app when they land.
+
+### 3.3 Delivery phases and living status
+
+The native port is built in ordered phases.
+Each phase is planned in its own `docs/superpowers/plans/` file, executed to green CI, and then this section is updated (status plus any learnings) so this master spec always reflects reality and guides the next phase.
+These are the native port's internal build phases; the original `2026-07-07-faceback-design.md` called the whole native app "Phase 2."
+
+| Phase | Plan file | Deliverable | Status |
+| --- | --- | --- | --- |
+| 1 - Scaffold & CI | `2026-07-15-faceback-native-01-scaffold-ci.md` | `ios/` scaffold, XcodeGen, FaceBackKit skeleton, green two-job CI (the walking skeleton) | In progress |
+| 2 - FaceBackKit logic | `2026-07-15-faceback-native-02-kit.md` | models, APIClient, UsageGuard, image math, GenerationFlow; `swift test` green on Linux | Planned |
+| 3 - App shell & auth | `2026-07-15-faceback-native-03-app-shell-auth.md` | SessionModel, navigation state machine, Theme and components, Loading/SignIn/AddKey | Planned |
+| 4 - Camera, generate, result | `2026-07-15-faceback-native-04-camera-generate-result.md` | CameraModel, AVFoundation, Vision face-gate, PHPicker, GenerationModel, Camera/Generating/Result, save-to-Photos | Planned |
+| 5 - Delivery to device | `2026-07-15-faceback-native-05-delivery-testflight.md` | fastlane signing, App Store Connect setup, TestFlight upload | Planned |
+
+Plans for phases 2 to 5 are written at the start of their phase, not upfront, so each is informed by the phase before it.
+
+**Per-phase learnings** are recorded here as each phase completes, starting after Phase 1.
 
 ## 4. Architecture and module layout
 
