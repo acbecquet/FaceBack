@@ -64,7 +64,7 @@ These are the native port's internal build phases; the original `2026-07-07-face
 | 1 - Scaffold & CI | `2026-07-15-faceback-native-01-scaffold-ci.md` | `ios/` scaffold, XcodeGen, FaceBackKit skeleton, green two-job CI (the walking skeleton) | Done - green CI |
 | 2 - FaceBackKit logic | `2026-07-15-faceback-native-02-kit.md` | models, APIClient, UsageGuard, image math, GenerationFlow; `swift test` green on Linux | Done (23 tests) |
 | 3 - App shell & auth | `2026-07-15-faceback-native-03-app-shell-auth.md` | SessionModel, navigation state machine, Theme and components, Loading/SignIn/AddKey | Done (9 tests) |
-| 4 - Camera, generate, result | `2026-07-15-faceback-native-04-camera-generate-result.md` | CameraModel, AVFoundation, Vision face-gate, PHPicker, GenerationModel, Camera/Generating/Result, save-to-Photos | Planned |
+| 4 - Camera, generate, result | `2026-07-15-faceback-native-04-camera-generate-result.md` | CameraModel, AVFoundation, Vision face-gate, PHPicker, GenerationModel, Camera/Generating/Result, save-to-Photos | Done (19 app tests) |
 | 5 - Delivery to device | `2026-07-15-faceback-native-05-delivery-testflight.md` | fastlane signing, App Store Connect setup, TestFlight upload | Planned |
 
 Plans for phases 2 to 5 are written at the start of their phase, not upfront, so each is informed by the phase before it.
@@ -105,6 +105,19 @@ Learnings:
 - `AppConfig.baseURL` is currently `https://faceback.pages.dev/api` and MUST be confirmed against the real deployed origin before Phase 4 integration and device testing.
 
 Phase 4 replaces `CameraPlaceholderView` with the real Camera and generation pipeline, wiring `GenerationFlow`'s injected closures to Vision, AVFoundation, CoreGraphics, and `APIClient`.
+
+#### Phase 4 learnings (2026-07-15, complete)
+
+The magic loop is built and compiles green: Vision face-gate, CoreGraphics downscale/encode, `GenerationModel` wiring the Phase-2 `GenerationFlow` to `APIClient`, AVFoundation camera + preview + PHPicker fallback, save-to-Photos, and the Camera / Generating / side-by-side Result screens. Nineteen app unit tests pass on the Simulator.
+Learnings:
+
+- `GenerationModel`'s deps are injectable (face detection AND usage history), which makes the flow testable without a face image; shared `UserDefaults` had leaked the 3s throttle between tests until the history was injected. The throttle firing was correct behavior, not a bug.
+- The build compiled clean; the only remaining warnings are Swift-6-future (a `nonisolated init` mutating `@MainActor` stored properties) - a migration item, non-blocking in Swift 5.
+- Live camera capture and Photos saving are NOT exercised on CI (no Simulator camera; permission prompts) - they need on-device verification in Phase 5. The PHPicker upload path plus unit tests cover the generate loop on CI.
+- This branch is based on `main`, which trails the deployed web app; Phase 4 ports the polished/deployed UX (side-by-side Result, front-mirror rule) read from commit `c8aff77`. The web polish commits could be fast-forwarded onto `main` separately.
+- Still open: `AppConfig.baseURL` must be confirmed against the real deployed origin before any live generation.
+
+Phase 5 (delivery/TestFlight) adds signing, App Store Connect setup, and the fastlane upload, and delivers the first on-device run that validates camera/Vision/Photos for real.
 
 ## 4. Architecture and module layout
 
