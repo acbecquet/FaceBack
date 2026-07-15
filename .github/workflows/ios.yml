@@ -1,0 +1,72 @@
+name: iOS
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+
+# One run per branch; a newer push cancels an in-flight run. Push-triggered
+# runs also surface as checks on the open PR, so no separate pull_request
+# trigger is needed (and it avoids duplicate runs).
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kit-linux:
+    name: FaceBackKit (Linux)
+    runs-on: ubuntu-latest
+    container: swift:5.10
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        working-directory: ios/FaceBackKit
+        run: swift test
+
+  build-test:
+    name: App build & test (Simulator)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest stable Xcode
+        run: |
+          ls -d /Applications/Xcode_*.app || true
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          echo "Selecting: $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Pick a simulator by UDID
+        id: sim
+        run: |
+          echo "Available iPhone simulators:"
+          xcrun simctl list devices available | grep -i iphone || true
+          UDID=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[][] | select(.name | test("iPhone")) | .udid][0]')
+          echo "Picked UDID: $UDID"
+          if [ -z "$UDID" ] || [ "$UDID" = "null" ]; then
+            echo "No iPhone simulator available on this runner"; exit 1
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build & test
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project FaceBack.xcodeproj \
+            -scheme FaceBack \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: ios/TestResults.xcresult
