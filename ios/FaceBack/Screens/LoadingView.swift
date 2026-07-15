@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Cold-launch placeholder. Replaced by the real navigation state machine in Phase 3.
+/// Cold-launch spinner shown while `session.refresh()` resolves the account.
 struct LoadingView: View {
     var body: some View {
-        ProgressView()
-            .accessibilityIdentifier("loading-spinner")
+        ZStack {
+            Theme.bg.ignoresSafeArea()
+            ProgressView()
+                .tint(Theme.blue)
+                .accessibilityIdentifier("loading-spinner")
+        }
     }
 }
 
